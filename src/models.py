@@ -31,7 +31,8 @@ class CNNSurfaceClassifier(nn.Module):
         self.fc_post = nn.Sequential(
             nn.AdaptiveAvgPool1d(1),
             nn.Flatten(),
-            nn.Linear(in_features=512, out_features=self.output_size),
+            # nn.Linear(in_features=512, out_features=self.output_size),
+            # nn.ReLU(),
         )
 
     def forward(self, x):
