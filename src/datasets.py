@@ -22,12 +22,12 @@ class SurfaceDataset(Dataset):
         self.labels = labels
         self.sampling_frequency = sample_freq
         self.dataset_frequency = data_freq
-        self.lookback = int(lookback * self.sampling_frequency)
+        self.lookback = lookback * self.sampling_frequency
         self.stride = int(self.dataset_frequency / self.sampling_frequency)
         self.window_length = self.lookback * self.stride
         self.subset = subset
         if not self.subset:
-            self.subset = ('cmd_vel', 'imu', 'odom', 'servo')
+            self.subset = ('imu', 'servo')
         measurements = {
             'cmd_vel': ['linear.x', 'angular.z'],
             'imu': ['linear_acceleration.x', 'linear_acceleration.y', 'linear_acceleration.z', 'angular_velocity.x',
@@ -72,12 +72,12 @@ class InferenceDataset(Dataset):
         # self.labels = labels
         self.sampling_frequency = sample_freq
         self.dataset_frequency = data_freq
-        self.lookback = int(lookback * self.sampling_frequency)
+        self.lookback = lookback * self.sampling_frequency
         self.stride = int(self.dataset_frequency / self.sampling_frequency)
         self.window_length = self.lookback * self.stride
         self.subset = subset
         if not self.subset:
-            self.subset = ('cmd_vel', 'imu', 'odom', 'servo')
+            self.subset = ('imu', 'servo')
         measurements = {
             'cmd_vel': ['linear.x', 'angular.z'],
             'imu': ['linear_acceleration.x', 'linear_acceleration.y', 'linear_acceleration.z', 'angular_velocity.x',
