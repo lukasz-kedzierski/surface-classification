@@ -112,7 +112,7 @@ def unpack_servo_data(dataframe):
     # load yaml data
     data = [[yaml.safe_load(line) for line in separate_lines] for separate_lines in data]
     cols = ['Load_' + str(idx + 1) for idx in range(len(data[0]))]
-    load = pd.DataFrame([[abs(tuple(dictionary.values())[2]) / 100 for dictionary in line] for line in data], columns=cols)
+    load = pd.DataFrame([[abs(dictionary['Amper']) / 100 for dictionary in line] for line in data], columns=cols)
     df = pd.concat([dataframe, load], axis=1)
     df.drop(columns=['load'], inplace=True)
     return df
@@ -130,7 +130,7 @@ def unpack_ang_vel_data(dataframe):
     # load yaml data
     data = [[yaml.safe_load(line) for line in separate_lines] for separate_lines in data]
     cols = ['AngVel_' + str(idx + 1) for idx in range(len(data[0]))]
-    ang_vel = pd.DataFrame([[abs(tuple(dictionary.values())[1]) for dictionary in line] for line in data], columns=cols)
+    ang_vel = pd.DataFrame([[abs(dictionary['AngVelocity']) for dictionary in line] for line in data], columns=cols)
     df = pd.concat([dataframe, ang_vel], axis=1)
     df.drop(columns=['angular_velocity'], inplace=True)
     return df
