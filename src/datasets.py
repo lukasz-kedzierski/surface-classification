@@ -24,7 +24,7 @@ class SurfaceDataset(Dataset):
         self.dataset_frequency = data_freq
         self.lookback = lookback * self.sampling_frequency
         self.stride = int(self.dataset_frequency / self.sampling_frequency)
-        self.window_length = self.lookback * self.stride
+        self.window_length = int(self.lookback * self.stride)
         self.subset = subset
         if not self.subset:
             self.subset = ('imu', 'servo')
@@ -74,7 +74,7 @@ class InferenceDataset(Dataset):
         self.dataset_frequency = data_freq
         self.lookback = lookback * self.sampling_frequency
         self.stride = int(self.dataset_frequency / self.sampling_frequency)
-        self.window_length = self.lookback * self.stride
+        self.window_length = int(self.lookback * self.stride)
         self.subset = subset
         if not self.subset:
             self.subset = ('imu', 'servo')
