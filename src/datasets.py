@@ -7,7 +7,7 @@ from utils import get_sample_features, sample_sequence, sequence_run
 
 
 class SurfaceDataset(Dataset):
-    def __init__(self, samples, labels, sample_freq=20., data_freq=100., lookback=1., subset=None):
+    def __init__(self, samples, labels=None, sample_freq=20., data_freq=100., lookback=1., subset=None):
         """
         Args:
             samples: array of time series, first dimension is number of time steps
@@ -40,7 +40,7 @@ class SurfaceDataset(Dataset):
             self.selected_columns.extend(measurements[measurement])
 
     def __len__(self):
-        return len(self.labels)
+        return len(self.samples)
 
     def __getitem__(self, idx):
         """
@@ -51,14 +51,26 @@ class SurfaceDataset(Dataset):
         run = pd.read_csv(sample, index_col=[0]).drop(labels='Time', axis=1)
 
         X = sample_sequence(run, self.selected_columns, self.window_length, self.stride)
-        y = self.labels[idx]
 
-        return torch.tensor(X, dtype=torch.float), torch.tensor(y, dtype=torch.float)
+        if self.labels:
+            y = self.labels[idx]
+            return torch.tensor(X, dtype=torch.float), torch.tensor(y, dtype=torch.float)
+        else:
+            return torch.tensor(X, dtype=torch.float)
 
 
 class SurfaceDatasetXGB(SurfaceDataset):
     def __init__(self, samples, labels, sample_freq=20., data_freq=100., lookback=1., subset=None):
         super().__init__(samples, labels, sample_freq, data_freq, lookback, subset)
+
+    def __iter__(self):
+        for sample, label in zip(self.samples, self.labels):
+            run = pd.read_csv(sample, index_col=[0]).drop(labels='Time', axis=1)
+
+            X = sample_sequence(run, self.selected_columns, self.window_length, self.stride)
+            X_hat = get_sample_features(X)
+
+            yield X_hat, label
 
     def __getitem__(self, idx):
         """
