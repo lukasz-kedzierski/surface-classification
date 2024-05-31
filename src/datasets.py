@@ -3,7 +3,7 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset
 
-from utils import sample_sequence, sequence_run
+from utils import get_sample_features, sample_sequence, sequence_run
 
 
 class SurfaceDataset(Dataset):
@@ -56,12 +56,31 @@ class SurfaceDataset(Dataset):
         return torch.tensor(X, dtype=torch.float), torch.tensor(y, dtype=torch.float)
 
 
+class SurfaceDatasetXGB(SurfaceDataset):
+    def __init__(self, samples, labels, sample_freq=20., data_freq=100., lookback=1., subset=None):
+        super().__init__(samples, labels, sample_freq, data_freq, lookback, subset)
+
+    def __getitem__(self, idx):
+        """
+        Retrieve a single, windowed time series from dataset
+        """
+
+        sample = self.samples[idx]
+        run = pd.read_csv(sample, index_col=[0]).drop(labels='Time', axis=1)
+
+        X = sample_sequence(run, self.selected_columns, self.window_length, self.stride)
+        X_hat = get_sample_features(X)
+        y = self.labels[idx]
+
+        return X_hat, y
+
+
 class InferenceDataset(Dataset):
     def __init__(self, run, sample_freq=20., data_freq=100., lookback=1., subset=None):
         """
         Args:
             run: array of time series, first dimension is number of time steps
-            labels: array of surface labels
+            # labels: array of surface labels
             sample_freq: lowest frequency of collected data
             data_freq: highest frequency of collected data
             lookback: size of window for prediction
