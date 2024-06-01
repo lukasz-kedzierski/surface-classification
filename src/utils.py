@@ -1,9 +1,10 @@
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import random
 import yaml
 
-from scipy import signal
+from scipy import signal, stats
 
 
 def sample_sequence(dataframe, selected_columns, window_length, freq_stride, sampling_freq=None, differencing=False):
@@ -20,12 +21,12 @@ def sample_sequence(dataframe, selected_columns, window_length, freq_stride, sam
     """
     df = dataframe[selected_columns]
     init_timestep = random.randint(0, (len(dataframe) - 1) - window_length)
-    df = df.iloc[init_timestep:init_timestep + window_length:freq_stride].to_numpy()
+    sequence = df.iloc[init_timestep:init_timestep + window_length:freq_stride].to_numpy()
     if sampling_freq:
-        df = butter_highpass_filter(df.T, 1, sampling_freq).T.copy()
+        sequence = butter_highpass_filter(sequence.T, 1, sampling_freq).T
     if differencing:
-        df = df.diff().to_numpy()[1:]
-    return df
+        sequence = np.diff(sequence, axis=0)[1:]
+    return sequence
 
 
 def sequence_run(dataframe, selected_columns, window_length, freq_stride, window_stride=1):
@@ -159,3 +160,51 @@ def calculate_mean_power(load_dataframe, velocity_dataframe, old):
     df['mean_power_left'] = power_left.mean(axis=1)
     df['mean_power_right'] = power_right.mean(axis=1)
     return df
+
+
+def get_sample_features(sequence):
+    "Get features for single sequence"
+
+    time_features = get_time_domain(sequence)
+    ft_features = get_frequency_domain(sequence)
+    features = np.append(time_features, ft_features)
+    return features
+
+
+def get_time_domain(sequence):
+    "How the signal changes in time"
+
+    min_val = np.min(sequence, axis=0)
+    max_val = np.max(sequence, axis=0)
+    mean = np.mean(sequence, axis=0)
+    std = np.std(sequence, axis=0)
+    skewness = stats.skew(sequence, axis=0)
+    kurtosis = stats.kurtosis(sequence, axis=0)
+
+    # # other features
+    rms = np.sqrt(np.mean(sequence ** 2, axis=0))
+    peak = np.max(np.abs(sequence), axis=0)
+    peak_to_peak = np.ptp(sequence, axis=0)  # the range between minimum and maximum values
+
+    crest_factor = np.max(np.abs(sequence), axis=0) / np.sqrt(np.mean(sequence ** 2, axis=0))  # how extreme the peaks are in a waveform
+    form_factor = np.sqrt(np.mean(sequence ** 2, axis=0)) / np.mean(sequence, axis=0)  # the ratio of the RMS (root mean square) value to the average value
+    pulse_indicator = np.max(np.abs(sequence), axis=0) / np.mean(sequence, axis=0)
+
+    features = np.array([min_val, max_val, mean, std, skewness, kurtosis, rms, peak, peak_to_peak, crest_factor, form_factor, pulse_indicator]).flatten()
+    return features
+
+
+def get_frequency_domain(sequence):
+    "How much of the signal lies within each given frequency band over a range of frequencies"
+
+    ft = np.fft.fft(sequence, axis=0)
+    S = np.abs(ft ** 2) / len(sequence)
+
+    ft_sum = np.sum(S, axis=0)
+    ft_max = np.max(S, axis=0)
+    ft_mean = np.mean(S, axis=0)
+    ft_peak = np.max(np.abs(S), axis=0)
+    ft_variance = np.var(S, axis=0)
+
+    features = np.array([ft_sum, ft_max, ft_mean, ft_peak, ft_variance]).flatten()
+    return features
