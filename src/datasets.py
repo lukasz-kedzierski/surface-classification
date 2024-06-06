@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 
 import torch
@@ -59,6 +60,28 @@ class SurfaceDataset(Dataset):
 class SurfaceDatasetXGB(SurfaceDataset):
     def __init__(self, samples, labels, sample_freq=20., data_freq=100., lookback=1., subset=None):
         super().__init__(samples, labels, sample_freq, data_freq, lookback, subset)
+        engineered_time_features = [channel + '_t_' + feature for feature in (
+            'min',
+            'max',
+            'mean',
+            'std',
+            'skew',
+            'kurt',
+            'rms',
+            'peak',
+            'p2p',
+            'crest',
+            'form',
+            'pulse',
+        ) for channel in self.selected_columns]
+        engineered_freq_features = [channel + '_f_' + feature for feature in (
+            'sum',
+            'max',
+            'mean',
+            'peak',
+            'var',
+        ) for channel in self.selected_columns]
+        self.engineered_features = np.array(engineered_time_features + engineered_freq_features)
 
     def __getitem__(self, idx):
         """
