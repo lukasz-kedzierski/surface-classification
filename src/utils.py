@@ -62,17 +62,21 @@ def butter_highpass_filter(data, cutoff, fs, order=5):
     return y
 
 
-def plot_signal(dataframe, columns, title):
+def plot_signal(dataframe, columns, title=None, y_label=None):
     """
     Args:
         dataframe: data from run
         columns: which signals to plot
         title: plot name
+        y_label: y-axis name
     """
+
     plt.rcParams['figure.figsize'] = [15, 6]
+
+    time = dataframe['Time'] - dataframe['Time'].min()
     for col in columns:
         plt.plot(
-            dataframe['Time'],
+            time,
             dataframe[col],
             alpha=0.8,
             linewidth=0.8,
@@ -80,8 +84,11 @@ def plot_signal(dataframe, columns, title):
             markersize=1,
             label=col,
         )
-    plt.title(title)
-    plt.xlabel('Time')
+    if title:
+        plt.title(title)
+    plt.xlabel('time [$s$]')
+    if y_label:
+        plt.ylabel(y_label)
     plt.legend()
     plt.show()
 
