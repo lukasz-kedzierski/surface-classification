@@ -1,11 +1,27 @@
+import matplotlib
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+from matplotlib.patches import ConnectionPatch
+import pandas as pd
+from cycler import cycler
+import seaborn as sns
 import numpy as np
 import pandas as pd
 import random
 import yaml
-
 from scipy import signal, stats
 
+matplotlib.rcParams.update(matplotlib.rcParamsDefault)
+
+nicer_green = '#159C48'
+nicer_blue = '#00A0FF'
+orange = '#FBBC04'
+pink = '#DB00CF'
+mad_purple = '#732BF5'
+light_green = '#66C2A5'
+main_color = '#3282F6' # zoom_plot background color
+
+plt.rcParams['figure.figsize'] = [10, 3]
 
 def sample_sequence(dataframe, selected_columns, window_length, freq_stride, sampling_freq=None, differencing=False):
     """
@@ -61,8 +77,7 @@ def butter_highpass_filter(data, cutoff, fs, order=5):
     y = signal.filtfilt(b, a, data)
     return y
 
-
-def plot_signal(dataframe, columns, title=None, y_label=None):
+def plot_signal(dataframe, columns, title=None, y_label=None, alpha=1):
     """
     Args:
         dataframe: data from run
@@ -71,27 +86,138 @@ def plot_signal(dataframe, columns, title=None, y_label=None):
         y_label: y-axis name
     """
 
-    plt.rcParams['figure.figsize'] = [15, 6]
+    plt.rcParams['figure.figsize'] = [10, 2]
+    plt.rcParams["axes.prop_cycle"] = cycler('color', [nicer_blue, nicer_green, orange])
+    plt.rcParams['lines.linewidth'] = 1.5
 
     time = dataframe['Time'] - dataframe['Time'].min()
     for col in columns:
         plt.plot(
             time,
             dataframe[col],
-            alpha=0.8,
-            linewidth=0.8,
-            marker='o',
-            markersize=1,
             label=col,
+            alpha=alpha,
         )
     if title:
         plt.title(title)
     plt.xlabel('time [$s$]')
     if y_label:
         plt.ylabel(y_label)
-    plt.legend()
+    plt.legend(loc="upper right")
+    plt.savefig(f'Documents/Project_surface_classification/main/surface-classification-main/src/{y_label[:10]}_300dpi.png', dpi=300)
     plt.show()
 
+
+def plot_many(dataframe, columns, title=None, y_label=None, alpha=1):
+    """
+    Args:
+        dataframe: data from run
+        columns: which signals to plot
+        title: plot name
+        y_label: y-axis name
+    """   
+    plt.rcParams['figure.figsize'] = [10, 3]
+    plt.rcParams["axes.prop_cycle"] = cycler('color', [nicer_blue, nicer_green, pink, orange])
+    plt.rcParams['lines.linewidth'] = 1.5
+
+    fig, axes = plt.subplots(2,2, sharex=True, sharey=True)
+
+    time = dataframe['Time'] - dataframe['Time'].min()
+
+    for i, ax in enumerate(axes.flat):
+        col = columns[i]
+        
+        ax.plot(
+            time,
+            dataframe[col],
+            label=col,
+            alpha=alpha
+        )
+        ax.set_title(f"{col}")
+            
+    fig.supxlabel('time [s]')
+    if y_label:
+        fig.supylabel(y_label)
+    # plt.legend()
+    plt.tight_layout()
+    plt.savefig(f'Documents/Project_surface_classification/main/surface-classification-main/src/{y_label[:10]}_300dpi.png', dpi=300)
+    plt.show()
+
+def zoom_plot(dataframe, columns, title=None, y_label=None, alpha=1):
+    """
+    Args:
+        dataframe: data from run
+        columns: which signals to plot
+        title: plot name
+        y_label: y-axis name
+    """
+    plt.rcParams['figure.figsize'] = [10, 5]
+    plt.rcParams["axes.prop_cycle"] = cycler('color', [nicer_blue, nicer_green])
+    plt.rcParams['lines.linewidth'] = 1.5
+    
+    # rectangle and connection patches coordinates
+    origin_x, origin_y = 8, 0
+    duration = 2.7
+    height = 0.9
+    alpha = 0.1
+    
+    rect = patches.Rectangle((origin_x, origin_y), duration, height, alpha=alpha, color=main_color)
+
+    
+    time = dataframe['Time'] - dataframe['Time'].min()
+    zoom_start = time[time >= origin_x].index[0]
+    zoom_end = time[time <= origin_x+2.7].index[-1]
+
+    # Create figures / axes
+    fig = plt.figure(dpi=300)
+    top_left = fig.add_subplot(2, 2, 1)
+    top_left.set_xticks([])
+    top_left.set_yticks([])
+    top_left.patch.set_alpha(alpha)
+    top_left.set_facecolor(main_color)
+    
+    top_right = fig.add_subplot(2, 2, 2)
+    top_right.axis("off")
+    
+    bottom = fig.add_subplot(2, 1, 2)
+    bottom.set_xlabel('time [$s$]')
+    
+    fig.subplots_adjust(hspace=.55)
+
+    for col in columns:
+        bottom.plot(
+            time,
+            dataframe[col],
+            label=col,
+        )
+    bottom.add_patch(rect)
+    bottom.title.set_text('Sample process')
+    bottom.set_ylabel(y_label)
+    bottom.legend(['mean power left', 'mean power right'], loc="upper right")
+
+    for col in columns:
+        top_left.plot(
+            time.iloc[zoom_start:zoom_end],
+            dataframe[col].iloc[zoom_start:zoom_end],
+            label=col,
+        # dataframe.loc[zoom_start:zoom_end, col].plot(ax=top_left, rot=0, title='Signal fragment')
+        )  
+         
+    # Add the connection patches
+    fig.add_artist(patches.ConnectionPatch(
+        xyA=(0, 0), coordsA=top_left.transAxes, # small figure left point of tangency
+        xyB=(origin_x, height), coordsB=bottom.transData,
+        color='black'
+    ))
+    
+    fig.add_artist(patches.ConnectionPatch(
+        xyA=(1, 0), coordsA=top_left.transAxes, # small figure left point of tangency
+        xyB=(origin_x+duration, height), coordsB=bottom.transData,
+        color='black'
+    ))
+
+    plt.savefig(r'Documents/Project_surface_classification/main/surface-classification-main/src/zoom_plot_300dpi.png', dpi=300)
+    plt.show()
 
 def format_to_yaml(series):
     """
@@ -193,24 +319,11 @@ def get_time_domain(sequence):
     peak = np.max(np.abs(sequence), axis=0)
     peak_to_peak = np.ptp(sequence, axis=0)  # the range between minimum and maximum values
 
-    crest_factor = peak / rms  # how extreme the peaks are in a waveform
-    form_factor = rms / mean  # the ratio of the RMS (root mean square) value to the average value
-    pulse_indicator = peak / mean
+    crest_factor = np.max(np.abs(sequence), axis=0) / np.sqrt(np.mean(sequence ** 2, axis=0))  # how extreme the peaks are in a waveform
+    form_factor = np.sqrt(np.mean(sequence ** 2, axis=0)) / np.mean(sequence, axis=0)  # the ratio of the RMS (root mean square) value to the average value
+    pulse_indicator = np.max(np.abs(sequence), axis=0) / np.mean(sequence, axis=0)
 
-    features = np.array([
-        min_val,
-        max_val,
-        mean,
-        std,
-        skewness,
-        kurtosis,
-        rms,
-        peak,
-        peak_to_peak,
-        crest_factor,
-        form_factor,
-        pulse_indicator,
-    ]).flatten()
+    features = np.array([min_val, max_val, mean, std, skewness, kurtosis, rms, peak, peak_to_peak, crest_factor, form_factor, pulse_indicator]).flatten()
     return features
 
 
