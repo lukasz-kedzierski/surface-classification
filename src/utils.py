@@ -193,11 +193,24 @@ def get_time_domain(sequence):
     peak = np.max(np.abs(sequence), axis=0)
     peak_to_peak = np.ptp(sequence, axis=0)  # the range between minimum and maximum values
 
-    crest_factor = np.max(np.abs(sequence), axis=0) / np.sqrt(np.mean(sequence ** 2, axis=0))  # how extreme the peaks are in a waveform
-    form_factor = np.sqrt(np.mean(sequence ** 2, axis=0)) / np.mean(sequence, axis=0)  # the ratio of the RMS (root mean square) value to the average value
-    pulse_indicator = np.max(np.abs(sequence), axis=0) / np.mean(sequence, axis=0)
+    crest_factor = peak / rms  # how extreme the peaks are in a waveform
+    form_factor = rms / mean  # the ratio of the RMS (root mean square) value to the average value
+    pulse_indicator = peak / mean
 
-    features = np.array([min_val, max_val, mean, std, skewness, kurtosis, rms, peak, peak_to_peak, crest_factor, form_factor, pulse_indicator]).flatten()
+    features = np.array([
+        min_val,
+        max_val,
+        mean,
+        std,
+        skewness,
+        kurtosis,
+        rms,
+        peak,
+        peak_to_peak,
+        crest_factor,
+        form_factor,
+        pulse_indicator,
+    ]).flatten()
     return features
 
 
