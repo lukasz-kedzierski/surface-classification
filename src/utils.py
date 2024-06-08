@@ -1,14 +1,12 @@
 import matplotlib
-import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-from matplotlib.patches import ConnectionPatch
-import pandas as pd
-from cycler import cycler
-import seaborn as sns
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import random
 import yaml
+
+from cycler import cycler
 from scipy import signal, stats
 
 matplotlib.rcParams.update(matplotlib.rcParamsDefault)
@@ -86,7 +84,7 @@ def plot_signal(dataframe, columns, title=None, y_label=None, alpha=1):
         y_label: y-axis name
     """
 
-    plt.rcParams['figure.figsize'] = [10, 2]
+    plt.rcParams['figure.figsize'] = [12, 4]
     plt.rcParams["axes.prop_cycle"] = cycler('color', [nicer_blue, nicer_green, orange])
     plt.rcParams['lines.linewidth'] = 1.5
 
@@ -100,11 +98,11 @@ def plot_signal(dataframe, columns, title=None, y_label=None, alpha=1):
         )
     if title:
         plt.title(title)
-    plt.xlabel('time [$s$]')
+    plt.xlabel('time [s]')
     if y_label:
         plt.ylabel(y_label)
     plt.legend(loc="upper right")
-    plt.savefig(f'Documents/Project_surface_classification/main/surface-classification-main/src/{y_label[:10]}_300dpi.png', dpi=300)
+    plt.savefig(f'../results/{y_label[:10]}_300dpi.png', dpi=300)
     plt.show()
 
 
@@ -116,7 +114,7 @@ def plot_many(dataframe, columns, title=None, y_label=None, alpha=1):
         title: plot name
         y_label: y-axis name
     """   
-    plt.rcParams['figure.figsize'] = [10, 3]
+    plt.rcParams['figure.figsize'] = [12, 3]
     plt.rcParams["axes.prop_cycle"] = cycler('color', [nicer_blue, nicer_green, pink, orange])
     plt.rcParams['lines.linewidth'] = 1.5
 
@@ -140,7 +138,7 @@ def plot_many(dataframe, columns, title=None, y_label=None, alpha=1):
         fig.supylabel(y_label)
     # plt.legend()
     plt.tight_layout()
-    plt.savefig(f'Documents/Project_surface_classification/main/surface-classification-main/src/{y_label[:10]}_300dpi.png', dpi=300)
+    plt.savefig(f'../results/{y_label[:10]}_300dpi.png', dpi=300)
     plt.show()
 
 def zoom_plot(dataframe, columns, title=None, y_label=None, alpha=1):
@@ -151,7 +149,7 @@ def zoom_plot(dataframe, columns, title=None, y_label=None, alpha=1):
         title: plot name
         y_label: y-axis name
     """
-    plt.rcParams['figure.figsize'] = [10, 5]
+    plt.rcParams['figure.figsize'] = [12, 5]
     plt.rcParams["axes.prop_cycle"] = cycler('color', [nicer_blue, nicer_green])
     plt.rcParams['lines.linewidth'] = 1.5
     
@@ -180,7 +178,7 @@ def zoom_plot(dataframe, columns, title=None, y_label=None, alpha=1):
     top_right.axis("off")
     
     bottom = fig.add_subplot(2, 1, 2)
-    bottom.set_xlabel('time [$s$]')
+    bottom.set_xlabel('time [s]')
     
     fig.subplots_adjust(hspace=.55)
 
@@ -191,7 +189,7 @@ def zoom_plot(dataframe, columns, title=None, y_label=None, alpha=1):
             label=col,
         )
     bottom.add_patch(rect)
-    bottom.title.set_text('Sample process')
+    # bottom.title.set_text('Sample process')
     bottom.set_ylabel(y_label)
     bottom.legend(['mean power left', 'mean power right'], loc="upper right")
 
@@ -216,7 +214,7 @@ def zoom_plot(dataframe, columns, title=None, y_label=None, alpha=1):
         color='black'
     ))
 
-    plt.savefig(r'Documents/Project_surface_classification/main/surface-classification-main/src/zoom_plot_300dpi.png', dpi=300)
+    plt.savefig(r'../results/zoom_plot_300dpi.png', dpi=300)
     plt.show()
 
 def format_to_yaml(series):
@@ -319,11 +317,24 @@ def get_time_domain(sequence):
     peak = np.max(np.abs(sequence), axis=0)
     peak_to_peak = np.ptp(sequence, axis=0)  # the range between minimum and maximum values
 
-    crest_factor = np.max(np.abs(sequence), axis=0) / np.sqrt(np.mean(sequence ** 2, axis=0))  # how extreme the peaks are in a waveform
-    form_factor = np.sqrt(np.mean(sequence ** 2, axis=0)) / np.mean(sequence, axis=0)  # the ratio of the RMS (root mean square) value to the average value
-    pulse_indicator = np.max(np.abs(sequence), axis=0) / np.mean(sequence, axis=0)
+    crest_factor = peak / rms  # how extreme the peaks are in a waveform
+    form_factor = rms / mean  # the ratio of the RMS (root mean square) value to the average value
+    pulse_indicator = peak / mean
 
-    features = np.array([min_val, max_val, mean, std, skewness, kurtosis, rms, peak, peak_to_peak, crest_factor, form_factor, pulse_indicator]).flatten()
+    features = np.array([
+        min_val,
+        max_val,
+        mean,
+        std,
+        skewness,
+        kurtosis,
+        rms,
+        peak,
+        peak_to_peak,
+        crest_factor,
+        form_factor,
+        pulse_indicator,
+    ]).flatten()
     return features
 
 
