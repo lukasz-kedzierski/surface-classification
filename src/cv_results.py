@@ -70,8 +70,6 @@ for filename in filenames:
         results[filename] = json.load(fp)
 
 # plot results
-fig, ax = plt.subplots()
-
 for result, label in zip(results.values(), labels):
     df = pd.DataFrame(result)
     res_array = np.array(df.loc['accuracy'].values.tolist()).T
@@ -79,15 +77,15 @@ for result, label in zip(results.values(), labels):
     average_acc = res_array.mean(axis=1)
     std_dev_acc = res_array.std(axis=1)
     ci = t_95 * std_dev_acc / np.sqrt(10)
-    ax.plot(x, average_acc)
-    ax.fill_between(x, (average_acc - ci), (average_acc + ci), alpha=.2, label=label)
-ax.set_xlim(1, 100)
-ax.set_ylim(0.4, 1)
-ax.set_xlabel('epoch')
-ax.set_ylabel('average accuracy')
+    plt.plot(x, average_acc)
+    plt.fill_between(x, (average_acc - ci), (average_acc + ci), alpha=.2, label=label)
+plt.xlim(1, 100)
+plt.ylim(0.4, 1)
+plt.xlabel('epoch')
+plt.ylabel('average accuracy')
 plt.grid(which='major', axis='both', linewidth=1)
 plt.grid(which='minor', axis='both', linewidth=0.4)
 plt.minorticks_on()
 plt.legend(loc='lower right')
+plt.tight_layout()
 plt.savefig(f'../results/cv/{figure_name}.png', dpi=300, bbox_inches="tight")
-plt.close()

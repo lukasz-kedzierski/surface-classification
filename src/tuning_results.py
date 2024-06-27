@@ -80,8 +80,6 @@ for filename in filenames:
         results[filename] = json.load(fp)
 
 # plot results
-fig, ax = plt.subplots()
-
 average_f1, ci_f1 = [], []
 for result in results.values():
     df = pd.DataFrame(result)
@@ -94,20 +92,19 @@ ind = np.arange(len(average_f1) / len(labels))  # the x locations for the groups
 ind_copy = ind.copy()
 width = 0.2  # the width of the bars
 for label in labels:
-    ax.bar(ind, average_f1[i:i + 3], width, yerr=ci_f1[i:i + 3], label=label, capsize=4, alpha=0.6)
+    plt.bar(ind, average_f1[i:i + 3], width, yerr=ci_f1[i:i + 3], label=label, capsize=4, alpha=0.6)
     i += 3
     ind += width
 
-ax.set_xticks(ind_copy + width, labels=['4W', '6W', '4W, 6W'])
+plt.xticks(ticks=ind_copy + width, labels=['4W', '6W', '4W, 6W'])
 plt.yticks(ticks=np.arange(5, 11) / 10)
-ax.set_ylim(0.6, 1)
-ax.set_xlabel('configuration')
-ax.set_ylabel('average F1 score')
+plt.ylim(0.6, 1)
+plt.xlabel('configuration')
+plt.ylabel('average F1 score')
 plt.grid(which='major', axis='y', linewidth=1)
 plt.grid(which='minor', axis='y', linewidth=0.4)
 plt.minorticks_on()
 plt.tick_params(axis='x', which='minor', bottom=False)
-plt.legend(bbox_to_anchor=(1, 0.5), loc='center left', )
-fig.tight_layout()
+plt.legend(bbox_to_anchor=(1, 0.5), loc='center left')
+plt.tight_layout()
 plt.savefig(f'../results/tuning/{figure_name}.png', dpi=300, bbox_inches="tight")
-plt.close()
