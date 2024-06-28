@@ -14,3 +14,19 @@ class EarlyStopper:
             if self.counter >= self.patience:
                 return True
         return False
+
+
+def step(model, batch, criterion, device, train=False, optimizer=None):
+    batch_x, batch_y = batch
+    batch_x, batch_y = batch_x.to(device), batch_y.to(device)
+    batch_x = batch_x.permute(0, 2, 1)
+    outputs = model(batch_x)
+    loss = criterion(outputs, batch_y)
+
+    if train:
+        # Backward pass
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+    return loss, outputs
