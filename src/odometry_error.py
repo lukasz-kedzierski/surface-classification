@@ -8,7 +8,8 @@ nicer_green = '#159C48'
 nicer_blue = '#00A0FF'
 orange = '#FBBC04'
 
-plt.rcParams['figure.figsize'] = [8, 6]
+plt.rcParams['figure.figsize'] = [4, 3]
+plt.rcParams['font.size'] = 10
 
 # read file
 errors = pd.read_excel(
@@ -44,7 +45,7 @@ scatter = sns.scatterplot(
     y=errors['6W']['error'],
     hue=assigned_labels,
     palette=[nicer_blue, nicer_green, orange],
-    s=100,
+    s=40,
 )
 plt.xticks(rotation=45, horizontalalignment='right')
 plt.yticks(ticks=np.arange(-6, 6, 3) / 10)
@@ -53,4 +54,4 @@ plt.xlabel('original labels')
 plt.ylabel('scaled odometry error')
 plt.grid()
 plt.legend(loc='lower right')
-plt.savefig(r'../results/odom_error_6W_300dpi.png', dpi=300, bbox_inches="tight")
+plt.savefig(r'../results/odom_error_6W.png', dpi=300, bbox_inches="tight")

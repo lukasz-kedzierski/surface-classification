@@ -11,13 +11,14 @@ nicer_green = '#159C48'
 nicer_blue = '#00A0FF'
 orange = '#FBBC04'
 
-plt.rcParams['figure.figsize'] = [5, 4]
+plt.rcParams['figure.figsize'] = [4, 3]
 plt.rcParams["axes.prop_cycle"] = cycler('color', [nicer_blue, nicer_green, orange])
 plt.rcParams['lines.linewidth'] = 0.5
+plt.rcParams['font.size'] = 10
 
 # set variables
 HISTORY_DIR = Path('../results/tuning/')
-labels = ('IMU', 'POWER', 'IMU + POWER')
+labels = ('imu', 'est. power', 'both')
 t_95 = 2.228
 
 # select result files to plot
@@ -32,7 +33,7 @@ t_95 = 2.228
 #     '3_6W_imu_servo_2024-05-28-20-10-03',
 #     '3_4W_6W_imu_servo_2024-05-28-11-54-14',
 # )
-# figure_name = '3_300dpi'
+# figure_name = '3'
 
 # filenames = (
 #     '10_4W_imu_2024-05-13-09-24-10',
@@ -45,7 +46,7 @@ t_95 = 2.228
 #     '10_6W_imu_servo_2024-05-13-09-58-30',
 #     '10_4W_6W_imu_servo_2024-05-13-01-30-56',
 # )
-# figure_name = '10_300dpi'
+# figure_name = '10'
 
 # filenames = (
 #     'xgb_3_4W_imu_2024-06-07-18-12-13',
@@ -58,7 +59,7 @@ t_95 = 2.228
 #     'xgb_3_6W_imu_servo_2024-06-07-18-47-03',
 #     'xgb_3_4W_6W_imu_servo_2024-06-07-18-55-42',
 # )
-# figure_name = 'xgb_3_300dpi'
+# figure_name = 'xgb_3'
 
 filenames = (
     'xgb_10_4W_imu_2024-06-06-23-47-53',
@@ -71,7 +72,7 @@ filenames = (
     'xgb_10_6W_imu_servo_2024-06-07-00-56-16',
     'xgb_10_4W_6W_imu_servo_2024-06-07-01-20-21',
 )
-figure_name = 'xgb_10_300dpi'
+figure_name = 'xgb_10'
 
 # read data from files
 results = {}
@@ -98,7 +99,7 @@ for label in labels:
 
 plt.xticks(ticks=ind_copy + width, labels=['4W', '6W', '4W, 6W'])
 plt.yticks(ticks=np.arange(5, 11) / 10)
-plt.ylim(0.6, 1)
+plt.ylim(0.5, 1)
 plt.xlabel('configuration')
 plt.ylabel('average F1 score')
 plt.grid(which='major', axis='y', linewidth=1)
