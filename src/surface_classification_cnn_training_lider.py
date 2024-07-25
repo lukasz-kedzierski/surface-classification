@@ -1,11 +1,13 @@
 import copy
 import json
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import random
 import time
 
 from pathlib import Path
+from sklearn.metrics import classification_report, ConfusionMatrixDisplay
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelBinarizer
 from tqdm import tqdm
@@ -54,7 +56,7 @@ dataset = [(DATA_DIR.joinpath(key + '.csv'), values['surface']) for key, values 
 X = pd.Series([run[0] for run in dataset], name='bag_name')
 y_primary = [run[1] for run in dataset]
 
-y_secondary = []
+# y_secondary = []
 # y_secondary = ['slippery' if label in ('1_Panele', '5_Spienione_PCV', '6_Linoleum')
 #                else 'grippy' if label in ('3_Wykladzina_jasna', '8_Pusta_plyta', '9_podklady')
 #                else 'neutral' for label in y_primary]
@@ -64,6 +66,9 @@ y_secondary = []
 # y_secondary = ['slippery' if label in ('3_Wykladzina_jasna', '4_Trawa')
 #                else 'grippy' if label in ('2_Wykladzina_czarna', '5_Spienione_PCV', '9_podklady', '10_Mata_ukladana')
 #                else 'neutral' for label in y_primary] # Clustering set
+y_secondary = ['slippery' if label in ('panele', 'plytki')
+               else 'grippy' if label in ('kostka', 'wylewka')
+               else 'neutral' for label in y_primary]
 
 lb = LabelBinarizer()
 if y_secondary:
@@ -189,8 +194,6 @@ with torch.no_grad():
 
         pbar_test.set_description(f"Test loss: {running_test_loss / (idx + 1):.2E}")
 
-import matplotlib.pyplot as plt
-from sklearn.metrics import classification_report, ConfusionMatrixDisplay
 print(classification_report(y_true, y_pred))
 ConfusionMatrixDisplay.from_predictions(y_true, y_pred, display_labels=classes)
 
