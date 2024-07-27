@@ -16,13 +16,13 @@ TOPIC_FILES = ('imu-data.csv', 'Servo_data.csv', 'wheel_feedback.csv')
 
 # get all bag paths
 if TRAIN:
-    main_dir = Path('../data/train_set/fixed/')
-    target_dir = Path('../data/train_set/csv')
+    main_dir = Path('../../data/train_set/fixed/')
+    target_dir = Path('../../data/train_set/csv')
     bag_paths = [folder for folder in main_dir.rglob('**/') if
                  any(subfolder in folder.__str__() for subfolder in ('T1\\', 'T2\\'))]
 else:
-    main_dir = Path('../data/test_set/bags/')
-    target_dir = Path('../data/test_set/csv/')
+    main_dir = Path('../../data/test_set/bags/')
+    target_dir = Path('../../data/test_set/csv/')
     bag_paths = [folder for folder in main_dir.rglob('**/')][1:]
 
 # loop over bags and process data
