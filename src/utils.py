@@ -330,62 +330,114 @@ def calculate_mean_power(load_dataframe, velocity_dataframe, old):
     return df
 
 
-def get_sample_features(sequence):
-    """Get features for single sequence"""
+def get_sample_features(sequence, time_features=None, freq_features=None):
+    """Get features for single sequence.
 
-    time_features = get_time_domain(sequence)
-    ft_features = get_frequency_domain(sequence)
-    features = np.append(time_features, ft_features)
-    return features
+    Parameters
+    ----------
+    sequence : ndarray
+        Time series data for which features are to be extracted.
+    time_features : list of str, optional
+        List of time domain features to extract. If None, no time features are extracted.
+    freq_features : list of str, optional
+        List of frequency domain features to extract. If None, no frequency features are extracted.
 
+    Returns
+    -------
+    ndarray
+        Extracted features as a flattened array.
+    """
+    if time_features is None and freq_features is None:
+        raise ValueError("At least one of time_features or freq_features must be provided.")
 
-def get_time_domain(sequence):
-    """How the signal changes in time"""
+    engineered_features = []
+    if time_features is not None:
+        engineered_features.append(get_time_domain(sequence, time_features))
+    if freq_features is not None:
+        engineered_features.append(get_frequency_domain(sequence, freq_features))
 
-    min_val = np.min(sequence, axis=0)
-    max_val = np.max(sequence, axis=0)
-    mean = np.mean(sequence, axis=0)
-    std = np.std(sequence, axis=0)
-    skewness = stats.skew(sequence, axis=0)
-    kurtosis = stats.kurtosis(sequence, axis=0)
-
-    # # other features
-    rms = np.sqrt(np.mean(sequence ** 2, axis=0))
-    peak = np.max(np.abs(sequence), axis=0)
-    peak_to_peak = np.ptp(sequence, axis=0)  # the range between minimum and maximum values
-
-    crest_factor = peak / rms  # how extreme the peaks are in a waveform
-    form_factor = rms / mean  # the ratio of the RMS (root mean square) value to the average value
-    pulse_indicator = peak / mean
-
-    features = np.array([
-        min_val,
-        max_val,
-        mean,
-        std,
-        skewness,
-        kurtosis,
-        rms,
-        peak,
-        peak_to_peak,
-        crest_factor,
-        form_factor,
-        pulse_indicator,
-    ]).flatten()
-    return features
+    return np.array(engineered_features)
 
 
-def get_frequency_domain(sequence):
-    """How much of the signal lies within each given frequency band over a range of frequencies"""
+def get_time_domain(sequence, time_features):
+    """Get time features.
+
+    Parameters
+    ----------
+    sequence : ndarray
+        Time series data for which time features are to be extracted.
+    time_features : list of str
+        List of time domain features to extract.
+
+    Returns
+    -------
+    ndarray
+        Extracted time features as a flattened array.
+    """
+    engineered_time_features = []
+
+    if 'min' in time_features:
+        engineered_time_features.append(np.min(sequence, axis=0))
+    if 'max' in time_features:
+        engineered_time_features.append(np.max(sequence, axis=0))
+    if 'mean' in time_features:
+        mean = np.mean(sequence, axis=0)
+        engineered_time_features.append(mean)
+    if 'std' in time_features:
+        engineered_time_features.append(np.std(sequence, axis=0))
+    if 'skew' in time_features:
+        engineered_time_features.append(stats.skew(sequence, axis=0))
+    if 'kurt' in time_features:
+        engineered_time_features.append(stats.kurtosis(sequence, axis=0))
+
+    if 'rms' in time_features:
+        rms = np.sqrt(np.mean(sequence ** 2, axis=0))
+        engineered_time_features.append(rms)
+    if 'peak' in time_features:
+        peak = np.max(np.abs(sequence), axis=0)
+        engineered_time_features.append(peak)
+    if 'p2p' in time_features:
+        engineered_time_features.append(np.ptp(sequence, axis=0))
+
+    if 'crest' in time_features:
+        engineered_time_features.append(peak / rms)  # how extreme the peaks are in a waveform
+    if 'form' in time_features:
+        engineered_time_features.append(rms / mean)  # the ratio of the RMS (root mean square) value to the average value
+    if 'pulse' in time_features:
+        engineered_time_features.append(peak / mean)
+
+    return np.array(engineered_time_features).flatten()
+
+
+def get_frequency_domain(sequence, freq_features):
+    """Get frequency features.
+
+    Parameters
+    ----------
+    sequence : ndarray
+        Time series data for which frequency features are to be extracted.
+    freq_features : list of str
+        List of frequency domain features to extract.
+
+    Returns
+    -------
+    ndarray
+        Extracted frequency features as a flattened array.
+    """
+    engineered_freq_features = []
 
     ft = np.fft.fft(sequence, axis=0)
-    S = np.abs(ft ** 2) / len(sequence)
+    s = np.abs(ft ** 2) / len(sequence)
 
-    ft_sum = np.sum(S, axis=0)
-    ft_max = np.max(S, axis=0)
-    ft_mean = np.mean(S, axis=0)
-    ft_peak = np.max(np.abs(S), axis=0)
-    ft_variance = np.var(S, axis=0)
+    if 'sum' in freq_features:
+        engineered_freq_features.append(np.sum(s, axis=0))
+    if 'max' in freq_features:
+        engineered_freq_features.append(np.max(s, axis=0))
+    if 'mean' in freq_features:
+        engineered_freq_features.append(np.mean(s, axis=0))
+    if 'peak' in freq_features:
+        engineered_freq_features.append(np.max(np.abs(s), axis=0))
+    if 'var' in freq_features:
+        engineered_freq_features.append(np.var(s, axis=0))
 
-    features = np.array([ft_sum, ft_max, ft_mean, ft_peak, ft_variance]).flatten()
-    return features
+    return np.array(engineered_freq_features).flatten()
