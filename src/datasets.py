@@ -1,12 +1,13 @@
 """Module for datasets used in training and inference of surface prediction models."""
 
+from abc import ABC, abstractmethod
 import pandas as pd
 import torch
 from torch.utils.data import Dataset
 from .utils import get_sample_features, sample_sequence, sequence_run
 
 
-class BaseDataset(Dataset):
+class BaseDataset(Dataset, ABC):
     """Base class for datasets used in training and inference of surface prediction models.
 
     This class initializes the dataset parameters such as frequency, sampling rate, lookback period,
@@ -73,6 +74,14 @@ class BaseDataset(Dataset):
         self.selected_modalities = []
         for source in self.subset:
             self.selected_modalities.extend(modalities[source])
+
+    @abstractmethod
+    def __len__(self):
+        return 0
+
+    @abstractmethod
+    def __getitem__(self, idx):
+        raise IndexError
 
 
 class CNNTrainingDataset(BaseDataset):
