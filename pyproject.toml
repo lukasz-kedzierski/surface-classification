@@ -1,0 +1,96 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "surface-classification"
+version = "0.1.0"
+description = "Code repository for Surface Classification Enhancement Using Estimated Power Consumption Data"
+readme = "README.md"
+requires-python = ">=3.10.8"
+license = {text = "MIT"}
+authors = [
+    {name = "Łukasz Kędzierski", email = "249911@edu.p.lodz.pl"},
+    {name = "Nina Janus", email = "249910@edu.p.lodz.pl"},
+]
+keywords = ["deep learning", "artificial intelligence", "surface classification", "power consumption", "autonomous mobile robots"]
+dependencies = [
+    "bagpy>=0.5",
+    "matplotlib>=3.10.5",
+    "numpy>=2.2.6",
+    "pandas>=2.3.2",
+    "seaborn>=0.13.2",
+    "tqdm>=4.67.1",
+    "scikit-learn>=1.0.0",
+]
+
+# [project.optional-dependencies]
+# dev = ["pytest", "black", "flake8"]
+# gpu = ["torch>=1.12.0", "torchvision"]
+
+# [project.scripts]
+# process-data = "src.data_processing.main:main"
+# run-experiment = "src.experiments.runner:main"
+
+[project.urls]
+Homepage = "https://github.com/lukasz-kedzierski/surface-classification"
+Repository = "https://github.com/lukasz-kedzierski/surface-classification"
+Issues = "https://github.com/lukasz-kedzierski/surface-classification/issues"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# [tool.black]
+# line-length = 88
+# target-version = ['py310']
+# include = '\.pyi?$'
+# extend-exclude = '''
+# /(
+#   # directories
+#   \.eggs
+#   | \.git
+#   | \.hg
+#   | \.mypy_cache
+#   | \.tox
+#   | \.venv
+#   | build
+#   | dist
+# )/
+# '''
+
+# [tool.isort]
+# profile = "black"
+# multi_line_output = 3
+# line_length = 88
+# known_first_party = ["src"]
+
+# [tool.pytest.ini_options]
+# testpaths = ["tests"]
+# python_files = "test_*.py"
+# python_classes = "Test*"
+# python_functions = "test_*"
+# addopts = [
+#     "--strict-markers",
+#     "--strict-config",
+#     "--cov=src",
+#     "--cov-report=term-missing",
+#     "--cov-report=html",
+# ]
+
+# [tool.mypy]
+# python_version = "3.8"
+# warn_return_any = true
+# warn_unused_configs = true
+# disallow_untyped_defs = true
+# disallow_incomplete_defs = true
+# check_untyped_defs = true
+# disallow_untyped_decorators = true
+# no_implicit_optional = true
+# warn_redundant_casts = true
+# warn_unused_ignores = true
+# warn_no_return = true
+# warn_unreachable = true
+# strict_equality = true
