@@ -62,11 +62,11 @@ This installs all dependencies and makes the `src` modules importable throughout
 
 The custom dataset used in this research is publicly available for download:
 
-**Download Link:** [Dataset URL]  
-**Size:** [Dataset size]  
-**Format:** [Format description]
+**Download Link:** <(https://tulodz-my.sharepoint.com/:f:/g/personal/202715_edu_p_lodz_pl/Em1T2WBmJT1NvsVm7FuZdJYB-d-HaB4iCnT79G592e8QtQ)>  
+**Size:** 5.65 GB  
+**Format:** ROS bag files
 
-After downloading, place the dataset in the root directory ([recommended structure]()). The preprocessing scripts expect a path relative to root.
+After downloading, place the dataset in the root directory ([recommended structure](#project-structure)). The preprocessing scripts expect a path relative to root.
 
 ## Usage
 
