@@ -62,7 +62,7 @@ This installs all dependencies and makes the `src` modules importable throughout
 
 The custom dataset used in this research is publicly available for download:
 
-**Download Link:** <(https://tulodz-my.sharepoint.com/:f:/g/personal/202715_edu_p_lodz_pl/Em1T2WBmJT1NvsVm7FuZdJYB-d-HaB4iCnT79G592e8QtQ)>  
+**Download Link:** <https://tulodz-my.sharepoint.com/:f:/g/personal/202715_edu_p_lodz_pl/Em1T2WBmJT1NvsVm7FuZdJYB-d-HaB4iCnT79G592e8QtQ>  
 **Size:** 5.65 GB  
 **Format:** ROS bag files
 
