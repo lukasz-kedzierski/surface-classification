@@ -1,11 +1,28 @@
-"""Script to merge csv files from ROS bag data into a single dataframe per bag."""
+"""Scripts to convert ROS bag files to CSV format and preprocess the data."""
 import argparse
 import functools as ft
 import json
 from pathlib import Path
 import pandas as pd
+from bagpy import bagreader
 from tqdm import tqdm
-from utils import unpack_load_data, unpack_ang_vel_data, interpolate_servo_data, calculate_mean_power
+from utils.processing import unpack_load_data, unpack_ang_vel_data, interpolate_servo_data, calculate_mean_power
+
+
+def convert_rosbags(bag_dir):
+    """Convert ROS bag files in the specified directory to CSV format.
+
+    Parameters
+    ----------
+    bag_dir : pathlib.Path
+        Path to the directory containing ROS bag files.
+    """
+    print("Extracting data from ROS bag files...")
+    bag_paths = list(bag_dir.rglob('*.bag'))
+    for bag_path in tqdm(bag_paths):
+        b = bagreader(str(bag_path))
+        for topic in b.topics:
+            b.message_by_topic(topic)
 
 
 def merge_csvs(bag_dir):
@@ -16,12 +33,14 @@ def merge_csvs(bag_dir):
     bag_dir : pathlib.Path
         Path to the directory containing ROS bag files.
     """
+    print("\nProcessing data from ROS topics...")
+
     # Flag indicating whether servo indexing is circular (True) or alternating (False).
     # In alternating indexing left indexes are even and right indexes are odd.
     circular_indexing = False
 
     # Set working directories.
-    target_dir = bag_dir.parents[0] / 'csv'
+    target_dir = bag_dir.parents[0] / 'processed'
     target_dir.mkdir(parents=True, exist_ok=True)
 
     # Case specifiv method for gathering dataset directories.
@@ -118,7 +137,7 @@ def merge_csvs(bag_dir):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Merge CSV files from ROS bag data.')
+    parser = argparse.ArgumentParser(description='Convert ROS bags to CSV and preprocess them.')
     parser.add_argument(
         '--bag_dir',
         type=Path,
@@ -127,4 +146,5 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
+    convert_rosbags(args.bag_dir)
     merge_csvs(args.bag_dir)
