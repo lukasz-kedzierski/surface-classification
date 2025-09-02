@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 import pandas as pd
 import torch
 from torch.utils.data import Dataset
-from .utils import get_sample_features, sample_sequence, sequence_run
+from utils.processing import get_sample_features, sample_sequence, sequence_run
 
 
 class BaseDataset(Dataset, ABC):
@@ -13,40 +13,30 @@ class BaseDataset(Dataset, ABC):
     This class initializes the dataset parameters such as frequency, sampling rate, lookback period,
     stride, and window length. It also defines the modalities to be used in the dataset.
     """
-    def __init__(self, data_frequency=100.0, sampling_rate=None, lookback_period=1.0, subset=None):
+    def __init__(self, data_frequency=100.0, window_length=200, subset=None):
         """
         Parameters
         ----------
         data_frequency : float, default=100.0
             Frequency of collected data [Hz].
-        sampling_rate : float, optional
-            New, downsampled frequency of windowed data [Hz].
-        lookback_period : float, default=1.0
-            Size of window for prediction [s].
-        subset : tuple of str, optional
+        window_length : int, default=200
+            Network input length.
+        subset : list of str, optional
             List containing data sources to be used in the dataset.
 
         Attributes
         ----------
-        stride : int
-            Number of samples to skip between windows.
-        window_length : int
-            Length of the window in samples.
         selected_modalities : list of str
             List of selected modalities based on the subset.
         """
         self.data_frequency = data_frequency
-        if sampling_rate is None:
-            self.sampling_rate = data_frequency
-        else:
-            self.sampling_rate = sampling_rate
-        self.lookback_period = lookback_period * self.sampling_rate
-
-        self.stride = int(self.data_frequency / self.sampling_rate)
-        self.window_length = int(self.lookback_period * self.stride)
+        self.window_length = window_length
 
         if subset is None:
-            self.subset = ('imu', 'servo')
+            self.subset = ['imu', 'servo']
+        else:
+            self.subset = subset
+
         modalities = {
             'cmd_vel': [
                 'linear.x',
@@ -91,8 +81,7 @@ class CNNTrainingDataset(BaseDataset):
             runs,
             labels,
             data_frequency=100.0,
-            sampling_rate=None,
-            lookback_period=1.0,
+            window_length=200,
             subset=None
             ):
         """
@@ -103,7 +92,7 @@ class CNNTrainingDataset(BaseDataset):
         labels : ndarray of str
             ndarray of one-hot encoded surface labels.
         """
-        super().__init__(data_frequency, sampling_rate, lookback_period, subset)
+        super().__init__(data_frequency, window_length, subset)
 
         self.runs = runs
         self.labels = labels
@@ -118,7 +107,7 @@ class CNNTrainingDataset(BaseDataset):
         run = self.runs[idx]
         time_series = pd.read_csv(run, index_col=[0]).drop(labels='Time', axis=1)
 
-        x = sample_sequence(time_series, self.selected_modalities, self.window_length, self.stride)
+        x = sample_sequence(time_series, self.selected_modalities, self.window_length)
         y = self.labels[idx]
 
         return torch.tensor(x, dtype=torch.float), torch.tensor(y, dtype=torch.float)
