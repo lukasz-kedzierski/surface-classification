@@ -192,9 +192,9 @@ def get_sample_features(sequence, time_features=None, freq_features=None):
 
     engineered_features = []
     if time_features is not None:
-        engineered_features.append(get_time_domain(sequence, time_features))
+        engineered_features.extend(get_time_domain(sequence, time_features))
     if freq_features is not None:
-        engineered_features.append(get_frequency_domain(sequence, freq_features))
+        engineered_features.extend(get_frequency_domain(sequence, freq_features))
 
     return np.array(engineered_features)
 
