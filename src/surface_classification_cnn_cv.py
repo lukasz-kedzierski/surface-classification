@@ -6,12 +6,9 @@ given a set of input signals in order to evaluate its expected performance.
 
 import argparse
 import json
-import random
 import time
 from pathlib import Path
-import numpy as np
 import torch
-import yaml
 from sklearn.metrics import f1_score
 from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.preprocessing import LabelBinarizer
@@ -21,111 +18,7 @@ from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
 from datasets import CNNTrainingDataset
 from models import CNNSurfaceClassifier
-from utils.training import step
-
-
-class ProgressReporter:
-    """Report progress to file for monitoring by launcher."""
-
-    def __init__(self, progress_file):
-        self.progress_file = Path(progress_file)
-        self.progress_data = {
-            'total_steps': 0,
-            'current_step': 0,
-            'status': 'initializing',
-            'current_fold': 0,
-            'total_folds': 0,
-            'current_epoch': 0,
-            'total_epochs': 0,
-            'train_loss': 0.0,
-            'val_loss': 0.0
-        }
-        self._write_progress()
-
-    def _write_progress(self):
-        """Write current progress to file."""
-        try:
-            with open(self.progress_file, 'w') as f:
-                json.dump(self.progress_data, f)
-        except Exception:
-            # If we can't write progress, don't crash the training
-            pass
-
-    def set_total_steps(self, total_folds, total_epochs):
-        """Set total steps for progress tracking."""
-        self.progress_data['total_steps'] = total_folds * total_epochs
-        self.progress_data['total_folds'] = total_folds
-        self.progress_data['total_epochs'] = total_epochs
-        self.progress_data['status'] = 'training'
-        self._write_progress()
-
-    def update_fold(self, current_fold):
-        """Update current fold."""
-        self.progress_data['current_fold'] = current_fold
-        self._write_progress()
-
-    def update_epoch(self, current_epoch, train_loss=None, val_loss=None):
-        """Update current epoch and losses."""
-        self.progress_data['current_epoch'] = current_epoch
-        self.progress_data['current_step'] = ((self.progress_data['current_fold'] - 1) *
-                                             self.progress_data['total_epochs'] + current_epoch)
-
-        if train_loss is not None:
-            self.progress_data['train_loss'] = float(train_loss)
-        if val_loss is not None:
-            self.progress_data['val_loss'] = float(val_loss)
-
-        self._write_progress()
-
-    def set_completed(self):
-        """Mark as completed."""
-        self.progress_data['status'] = 'completed'
-        self.progress_data['current_step'] = self.progress_data['total_steps']
-        self._write_progress()
-
-    def set_failed(self):
-        """Mark as failed."""
-        self.progress_data['status'] = 'failed'
-        self._write_progress()
-
-
-def set_seed(seed):
-    """Set random seed for reproducibility."""
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.backends.cudnn.benchmark = False
-    torch.backends.cudnn.deterministic = True
-    generator = torch.Generator()
-    generator.manual_seed(seed)
-    return generator
-
-
-def seed_worker(worker_id):
-    """Set the seed for worker processes to ensure reproducibility."""
-    worker_seed = torch.initial_seed() % 2**32
-    np.random.seed(worker_seed)
-    random.seed(worker_seed)
-
-
-def get_device():
-    """Get the device to run the model on."""
-    return "cuda:0" if torch.cuda.is_available() else "cpu"
-
-
-def get_input_size(channels):
-    """Get the input size based on the subset of modalities."""
-    if channels is None:
-        return 0
-    size_map = {'imu': 6, 'servo': 2}
-    return sum(size_map[input] for input in channels)
-
-
-def load_config(config_file):
-    """Load configuration from YAML file."""
-    with open(config_file, 'r', encoding='utf-8') as f:
-        config = yaml.safe_load(f)
-    return config
+from utils.training import ProgressReporter, load_config, set_seed, seed_worker, get_device, get_input_size, step
 
 
 def cnn_cv(
@@ -230,8 +123,8 @@ def cnn_cv(
         )
 
         epoch_pbar = tqdm(total=training_params['num_epochs'],
-                            desc=f"Fold {i+1}/{n_splits}",
-                            disable=progress_reporter is not None)
+                          desc=f"Fold {i+1}/{n_splits}",
+                          disable=progress_reporter is not None)
 
         for epoch in range(training_params['num_epochs']):
             idx = 0
@@ -338,7 +231,14 @@ def main():
     experiment_name = args.experiment_id
     experiment_params = next((params['experiment_params'] for params in experiments if params['experiment_name'] == experiment_name))
 
-    cnn_cv(experiment_name, experiment_params, training_params, dataset_params, args.output_dir, progress_reporter)
+    cnn_cv(
+        experiment_name,
+        experiment_params,
+        training_params,
+        dataset_params,
+        args.output_dir,
+        progress_reporter
+        )
     time.sleep(1)
 
 
