@@ -13,18 +13,18 @@ from tqdm import tqdm
 
 class ProgressTracker:
     """Track progress of multiple experiments using file-based communication."""
-    
+
     def __init__(self, progress_dir, experiment_names):
         self.progress_dir = Path(progress_dir)
         self.progress_dir.mkdir(parents=True, exist_ok=True)
         self.experiment_names = experiment_names
         self.progress_bars = {}
         self.stop_monitoring = False
-        
+
         # Create progress files for each experiment
         for exp_name in experiment_names:
             progress_file = self.progress_dir / f"{exp_name}_progress.json"
-            with open(progress_file, 'w') as f:
+            with open(progress_file, 'w', encoding='utf-8') as f:
                 json.dump({
                     'total_steps': 0,
                     'current_step': 0,
@@ -36,33 +36,33 @@ class ProgressTracker:
                     'train_loss': 0.0,
                     'val_loss': 0.0
                 }, f)
-    
+
     def start_monitoring(self):
         """Start monitoring progress in a separate thread."""
         self.monitor_thread = threading.Thread(target=self._monitor_progress, daemon=True)
         self.monitor_thread.start()
-    
+
     def stop_monitoring_func(self):
         """Stop monitoring progress."""
         self.stop_monitoring = True
         if hasattr(self, 'monitor_thread'):
             self.monitor_thread.join(timeout=1)
-        
+
         # Close all progress bars
         for pbar in self.progress_bars.values():
             pbar.close()
-    
+
     def _monitor_progress(self):
         """Monitor progress files and update progress bars."""
         while not self.stop_monitoring:
             for exp_name in self.experiment_names:
                 progress_file = self.progress_dir / f"{exp_name}_progress.json"
-                
+
                 try:
                     if progress_file.exists():
-                        with open(progress_file, 'r') as f:
+                        with open(progress_file, 'r', encoding='utf-8') as f:
                             data = json.load(f)
-                        
+
                         # Create progress bar if it doesn't exist
                         if exp_name not in self.progress_bars:
                             if data['total_steps'] > 0:
@@ -72,20 +72,20 @@ class ProgressTracker:
                                     position=len(self.progress_bars),
                                     leave=True
                                 )
-                        
+
                         # Update existing progress bar
                         elif exp_name in self.progress_bars:
                             pbar = self.progress_bars[exp_name]
-                            
+
                             # Update total if it changed
                             if pbar.total != data['total_steps'] and data['total_steps'] > 0:
                                 pbar.total = data['total_steps']
                                 pbar.refresh()
-                            
+
                             # Update progress
                             if data['current_step'] > pbar.n:
                                 pbar.update(data['current_step'] - pbar.n)
-                            
+
                             # Update description with current status
                             status_info = []
                             if data['status'] == 'training':
@@ -97,17 +97,17 @@ class ProgressTracker:
                                 status_info.append("✅ COMPLETED")
                             elif data['status'] == 'failed':
                                 status_info.append("❌ FAILED")
-                            
+
                             desc = f"{exp_name}"
                             if status_info:
                                 desc += f" - {' | '.join(status_info)}"
-                            
+
                             pbar.set_description(desc)
-                
+
                 except (json.JSONDecodeError, FileNotFoundError, KeyError):
                     # Skip if file is being written or doesn't exist yet
                     continue
-            
+
             time.sleep(0.5)  # Update every 500ms
 
 
@@ -203,16 +203,16 @@ def main():
             # Update progress file to mark as completed/failed
             exp_name = result['experiment_id']
             progress_file = progress_dir / f"{exp_name}_progress.json"
-            
+
             if progress_file.exists():
                 try:
-                    with open(progress_file, 'r') as f:
+                    with open(progress_file, 'r', encoding='utf-8') as f:
                         data = json.load(f)
-                    
+
                     data['status'] = 'completed' if result['success'] else 'failed'
                     data['current_step'] = data['total_steps']
-                    
-                    with open(progress_file, 'w') as f:
+
+                    with open(progress_file, 'w', encoding='utf-8') as f:
                         json.dump(data, f)
                 except:
                     pass  # If we can't update, it's not critical
