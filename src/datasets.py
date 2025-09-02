@@ -1,6 +1,7 @@
 """Module for datasets used in training and inference of surface prediction models."""
 
 from abc import ABC, abstractmethod
+import numpy as np
 import pandas as pd
 import torch
 from torch.utils.data import Dataset
@@ -38,10 +39,6 @@ class BaseDataset(Dataset, ABC):
             self.subset = subset
 
         modalities = {
-            'cmd_vel': [
-                'linear.x',
-                'angular.z',
-            ],
             'imu': [
                 'linear_acceleration.x',
                 'linear_acceleration.y',
@@ -49,12 +46,6 @@ class BaseDataset(Dataset, ABC):
                 'angular_velocity.x',
                 'angular_velocity.y',
                 'angular_velocity.z',
-            ],
-            'odom': [
-                'pose.pose.position.x',
-                'pose.pose.position.y',
-                'twist.twist.linear.x',
-                'twist.twist.angular.z',
             ],
             'servo': [
                 'mean_power_left',
@@ -123,8 +114,7 @@ class XGBTrainingDataset(CNNTrainingDataset):
             runs,
             labels,
             data_frequency=100.0,
-            sampling_rate=None,
-            lookback_period=1.0,
+            window_length=200,
             subset=None,
             time_features=None,
             freq_features=None
@@ -137,7 +127,7 @@ class XGBTrainingDataset(CNNTrainingDataset):
         freq_features : list of str, optional
             List of frequency domain features to be extracted from the time series.
         """
-        super().__init__(runs, labels, data_frequency, sampling_rate, lookback_period, subset)
+        super().__init__(runs, labels, data_frequency, window_length, subset)
 
         self.time_features = time_features
         self.freq_features = freq_features
@@ -151,7 +141,7 @@ class XGBTrainingDataset(CNNTrainingDataset):
         f_features = [channel + '_f_' + feature
                       for feature in self.freq_features
                       for channel in self.selected_modalities]
-        return t_features + f_features
+        return np.array(t_features + f_features)
 
     def __getitem__(self, idx):
         """Overrides __getitem__ to return engineered features for XGBoost."""
@@ -159,7 +149,7 @@ class XGBTrainingDataset(CNNTrainingDataset):
         run = self.runs[idx]
         time_series = pd.read_csv(run, index_col=[0]).drop(labels='Time', axis=1)
 
-        x = sample_sequence(time_series, self.selected_modalities, self.window_length, self.stride)
+        x = sample_sequence(time_series, self.selected_modalities, self.window_length)
         x_hat = get_sample_features(x, self.time_features, self.freq_features)
         y = self.labels[idx]
 
