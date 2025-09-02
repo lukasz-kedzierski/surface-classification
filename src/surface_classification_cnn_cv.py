@@ -158,9 +158,8 @@ def cnn_cv(
                     y_true.extend(torch.argmax(val_batch[1], dim=1).cpu().numpy())
                     y_pred.extend(torch.argmax(val_outputs, dim=1).cpu().numpy())
 
-                avg_val_loss = running_val_loss.detach().cpu().item() / (idx + 1)
-                split_val_loss.append(avg_val_loss)
-
+            avg_val_loss = running_val_loss.detach().cpu().item() / (idx + 1)
+            split_val_loss.append(avg_val_loss)
             split_accuracy.append(f1_score(y_true, y_pred, average='weighted'))
 
             # Update progress
