@@ -1,0 +1,5 @@
+dataset_params:
+  data_dir: "data/train_set/processed"
+  labels_file: "data/train_set/labels.json"
+  generalized_classes: True
+bag_path: "data/train_set/raw/..."
