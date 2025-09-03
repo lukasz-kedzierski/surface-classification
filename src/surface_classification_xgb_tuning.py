@@ -18,29 +18,6 @@ from datasets import XGBTrainingDataset
 from utils.training import load_config, set_seed, seed_worker
 
 
-TIME_FEATURES = [
-    'min',
-    'max',
-    'mean',
-    'std',
-    'skew',
-    'kurt',
-    'rms',
-    'peak',
-    'p2p',
-    'crest',
-    'form',
-    'pulse',
-]
-FREQ_FEATURES = [
-    'sum',
-    'max',
-    'mean',
-    'peak',
-    'var',
-]
-
-
 def xgb_training(
         experiment_name,
         experiment_params,
@@ -89,8 +66,8 @@ def xgb_training(
         data_frequency=dataset_params['data_frequency'],
         window_length=200,
         subset=experiment_params['channels'],
-        time_features=TIME_FEATURES,
-        freq_features=FREQ_FEATURES
+        time_features=dataset_params['time_features'],
+        freq_features=dataset_params['freq_features']
         )
 
     param_grid = {
