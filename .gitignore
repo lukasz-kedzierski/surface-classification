@@ -224,3 +224,9 @@ data/
 *.pkl
 *.h5
 *.hdf5
+
+# Results
+results/
+*.png
+*.json
+*.pt
