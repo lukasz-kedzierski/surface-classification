@@ -281,3 +281,22 @@ def get_frequency_domain(sequence, freq_features):
         engineered_freq_features.append(np.var(s, axis=0))
 
     return np.array(engineered_freq_features).flatten()
+
+
+def generalize_classes(surface_classes):
+    """Generalize surface classes.
+
+    Parameters
+    ----------
+    surface_classes : list of str
+        List of original surface classes.
+
+    Returns
+    -------
+    list of str
+        List of generalized surface classes.
+    """
+    return ['slippery' if label in ('3_Wykladzina_jasna', '4_Trawa')
+            else 'grippy' if label in ('5_Spienione_PCV', '8_Pusta_plyta',
+                                       '9_podklady', '10_Mata_ukladana')
+            else 'neutral' for label in surface_classes]
