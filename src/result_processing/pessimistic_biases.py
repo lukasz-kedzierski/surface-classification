@@ -17,7 +17,7 @@ import torch.nn as nn
 from torch.optim.lr_scheduler import ExponentialLR
 from torch.utils.data import DataLoader, Subset
 
-from datasets import SurfaceDataset
+from datasets import CNNTrainingDataset
 from helpers import EarlyStopper
 from models import CNNSurfaceClassifier
 
@@ -92,7 +92,7 @@ TRAIN_SIZES = np.arange(1, 9) / 10
 # X_training.reset_index(drop=True, inplace=True)
 # X_test.reset_index(drop=True, inplace=True)
 #
-# cv_training_data = SurfaceDataset(
+# cv_training_data = CNNTrainingDataset(
 #     X_training,
 #     y_training,
 #     sample_freq=SAMPLING_FREQUENCY,
@@ -100,7 +100,7 @@ TRAIN_SIZES = np.arange(1, 9) / 10
 #     lookback=LOOKBACK,
 #     subset=SUBSET,
 # )
-# cv_test_data = SurfaceDataset(
+# cv_test_data = CNNTrainingDataset(
 #     X_test,
 #     y_test,
 #     sample_freq=SAMPLING_FREQUENCY,

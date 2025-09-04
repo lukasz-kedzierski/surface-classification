@@ -6,13 +6,24 @@ import pandas as pd
 import seaborn as sns
 from sklearn.feature_selection import mutual_info_classif
 from sklearn.preprocessing import LabelEncoder
-from utils.processing import unpack_load_data, unpack_ang_vel_data, calculate_mean_power
+from utils.processing import unpack_load_data, unpack_ang_vel_data, calculate_mean_power, generalize_classes
 from utils.training import load_config
-from utils.visualization import plot_signal, plot_many
+from utils.visualization import setup_matplotlib, plot_signal, plot_many
 
 
-def analyze_run(bag_path):
-    """Local dataset analysis comprising of one run."""
+def analyze_run(bag_path, output_dir):
+    """Local dataset analysis comprising of one run.
+
+    Parameters
+    ----------
+    bag_path : Path
+        Path to the directory containing the bag data.
+    output_dir : Path
+        Directory to save the plots.
+    """
+    image_dir = output_dir.joinpath('images')
+    image_dir.mkdir(parents=True, exist_ok=True)
+
     # Read IMU and servo data.
     imu_dataframe = pd.read_csv(bag_path.joinpath('imu-data.csv'))
     wheel_load_dataframe = pd.read_csv(bag_path.joinpath('Servo_data.csv'))
@@ -38,40 +49,54 @@ def analyze_run(bag_path):
     power_cols = [col for col in power_dataframe.columns if 'estimated_power' in col]
 
     # Plot all manuscript figures.
+    setup_matplotlib({'figure.figsize': [8, 3]})
     plot_signal(
         imu_dataframe,
         imu_lin_acc_cols,
-        y_label='IMU acceleration [$\mathregular{m/s^2}$]',
-        alpha=0.5
+        y_label=r'IMU acceleration [$\mathregular{m/s^2}$]',
+        alpha=0.5,
+        output_dir=image_dir
         )
     plot_signal(
         imu_dataframe,
         imu_ang_vel_cols,
-        y_label='IMU angular velocity [$\mathregular{rad/s}$]',
-        alpha=0.5
+        y_label=r'IMU angular velocity [$\mathregular{rad/s}$]',
+        alpha=0.5,
+        output_dir=image_dir
         )
     plot_many(
         wheel_velocity_dataframe,
         wheel_angular_velocity_cols,
-        y_label='servo angular velocity [rpm/min]'
+        y_label='servo angular velocity [rpm/min]',
+        output_dir=image_dir
         )
     plot_many(
         wheel_load_dataframe,
         wheel_load_cols,
-        y_label='servo fractional load'
+        y_label='servo fractional load',
+        output_dir=image_dir
         )
-    plot_signal(power_dataframe, power_cols, y_label='power estimate')
+    plot_signal(power_dataframe, power_cols, y_label='power estimate', output_dir=image_dir)
 
 
 def analyze_dataset(dataset_params, output_dir):
-    """Global dataset analysis including:
+    """
+    Global dataset analysis including:
         1. mutual information score between features and target,
         2. feature correlation analysis.
+
+    Parameters
+    ----------
+    dataset_params : dict
+        Dataset parameters from configuration file.
+    output_dir : Path
+        Directory to save the analysis results.
     """
     data_dir = Path(dataset_params['data_dir'])
     labels_file = Path(dataset_params['labels_file'])
 
     image_dir = output_dir.joinpath('images')
+    image_dir.mkdir(parents=True, exist_ok=True)
 
     with open(labels_file, encoding='utf-8') as fp:
         labels = json.load(fp)
@@ -84,10 +109,7 @@ def analyze_dataset(dataset_params, output_dir):
 
     le = LabelEncoder()
     if dataset_params['generalized_classes']:
-        generalized_classes = [
-            'slippery' if label in ('3_Wykladzina_jasna', '4_Trawa')
-            else 'grippy' if label in ('5_Spienione_PCV', '8_Pusta_plyta', '9_podklady', '10_Mata_ukladana')
-            else 'neutral' for label in target_classes]
+        generalized_classes = generalize_classes(target_classes)
         le.fit(generalized_classes)
         y = le.transform(generalized_classes)
     else:
@@ -106,10 +128,8 @@ def analyze_dataset(dataset_params, output_dir):
         )
     mutual_information_df.to_json(output_dir / 'mutual_information.json')
 
-    plt.rcParams['figure.figsize'] = [4, 3]
-    plt.rcParams['font.size'] = 8
+    setup_matplotlib({'font.size': 8})
     corr_matrix = x.drop(columns=['Time']).corr()
-    fig, ax = plt.subplots()
     sns.heatmap(corr_matrix, vmin=-1, vmax=1, cmap="Blues", annot=True, linewidths=0.5, fmt=".2f")
     plt.xticks(rotation=45, ha='right')
     plt.savefig(image_dir / 'corr_plot.png', dpi=300, bbox_inches="tight")
@@ -134,7 +154,7 @@ def main():
     dataset_params = analysis_params['dataset_params']
     bag_path = analysis_params['bag_path']
 
-    analyze_run(bag_path)
+    analyze_run(bag_path, args.output_dir)
     analyze_dataset(dataset_params, args.output_dir)
 
 
