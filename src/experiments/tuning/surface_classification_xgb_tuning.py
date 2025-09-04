@@ -14,7 +14,7 @@ from sklearn.model_selection import StratifiedShuffleSplit, RandomizedSearchCV
 from sklearn.preprocessing import LabelEncoder
 from torch.utils.data import DataLoader, Subset
 from xgboost import XGBClassifier
-from datasets import XGBTrainingDataset
+from utils.datasets import XGBTrainingDataset
 from utils.training import load_config, set_seed, seed_worker
 
 
