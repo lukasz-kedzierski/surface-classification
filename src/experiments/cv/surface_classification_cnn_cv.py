@@ -16,9 +16,9 @@ from torch import nn
 from torch.optim.lr_scheduler import ExponentialLR
 from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
-from datasets import CNNTrainingDataset
-from models import CNNSurfaceClassifier
-from utils.training import ProgressReporter, load_config, set_seed, seed_worker, get_device, get_input_size, step
+from models.models import CNNSurfaceClassifier
+from utils.datasets import CNNTrainingDataset
+from utils.training import ProgressReporter, load_config, extract_experiment_name, set_seed, seed_worker, get_device, get_input_size, step
 
 
 def cnn_cv(
@@ -94,7 +94,7 @@ def cnn_cv(
 
         split_train_loss = []
         split_val_loss = []
-        split_accuracy = []
+        split_f1 = []
 
         # Initialize the model in each split
         cnn_model = CNNSurfaceClassifier(input_size=input_size, output_size=num_classes).to(device)
@@ -160,7 +160,7 @@ def cnn_cv(
 
             avg_val_loss = running_val_loss.detach().cpu().item() / (idx + 1)
             split_val_loss.append(avg_val_loss)
-            split_accuracy.append(f1_score(y_true, y_pred, average='weighted'))
+            split_f1.append(f1_score(y_true, y_pred, average='weighted'))
 
             # Update progress
             if progress_reporter:
@@ -169,7 +169,7 @@ def cnn_cv(
                 epoch_pbar.set_postfix({
                     'Train Loss': f"{avg_train_loss:.2E}",
                     'Val Loss': f"{avg_val_loss:.2E}",
-                    'F1': f"{split_accuracy[-1]:.3f}"
+                    'F1': f"{split_f1[-1]:.3f}"
                 })
                 epoch_pbar.update(1)
 
@@ -180,7 +180,7 @@ def cnn_cv(
         history[i + 1] = {
             'train_loss': split_train_loss,
             'val_loss': split_val_loss,
-            'accuracy': split_accuracy
+            'f1_score': split_f1
             }
 
     fold_pbar.close()
@@ -197,12 +197,12 @@ def main():
     """Main script for loading configuration file and running the experiment."""
     parser = argparse.ArgumentParser(description="CNN Cross-Validation for Surface Classification")
     parser.add_argument(
-        '--config',
-        type=Path,
-        help="YAML configuration file path"
+        '--config-file',
+        type=str,
+        help="YAML configuration file name"
     )
     parser.add_argument(
-        '--experiment-id',
+        '--experiment-name',
         type=str,
         help="Experiment ID to run"
     )
@@ -222,20 +222,26 @@ def main():
     # Setup progress reporter if progress directory is provided
     progress_reporter = None
     if args.progress_dir:
-        progress_file = Path(args.progress_dir) / f"{args.experiment_id}_progress.json"
+        progress_file = Path(args.progress_dir) / f'{args.experiment_name}_progress.json'
         progress_reporter = ProgressReporter(progress_file)
 
-    all_params = load_config(args.config)
+    config_path = Path('configs').joinpath(args.config_file)
+    all_params = load_config(config_path)
     experiments, training_params, dataset_params = all_params.values()
-    experiment_name = args.experiment_id
-    experiment_params = next((params['experiment_params'] for params in experiments if params['experiment_name'] == experiment_name))
+    experiment_name = args.experiment_name
+    experiment_params = next((params['experiment_params'] for params in experiments if extract_experiment_name(params['experiment_params']) == experiment_name))
+
+    generalized_classes = ['3'] if dataset_params['generalized_classes'] else ['10']
+
+    output_dir = args.output_dir.joinpath(generalized_classes, '_'.join(experiment_params['kinematics']))
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     cnn_cv(
         experiment_name,
         experiment_params,
         training_params,
         dataset_params,
-        args.output_dir,
+        output_dir,
         progress_reporter
         )
     time.sleep(1)

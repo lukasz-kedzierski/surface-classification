@@ -1,6 +1,6 @@
-"""Surface Classification CNN Cross-Validation Script.
+"""Surface Classification CNN Tuning Script.
 
-This script performs cross-validation for training a CNN model on surface classification task
+This script performs tuning for a CNN model on surface classification task
 given a set of input signals in order to evaluate its expected performance.
 """
 
@@ -16,12 +16,12 @@ from torch import nn
 from torch.optim.lr_scheduler import ExponentialLR
 from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
-from datasets import CNNTrainingDataset
-from models import CNNSurfaceClassifier
-from utils.training import EarlyStopper, ProgressReporter, load_config, set_seed, seed_worker, get_device, get_input_size, step
+from models.models import CNNSurfaceClassifier
+from utils.datasets import CNNTrainingDataset
+from utils.training import EarlyStopper, ProgressReporter, load_config, extract_experiment_name, set_seed, seed_worker, get_device, get_input_size, step, average_over_splits
 
 
-def cnn_training(
+def cnn_tuning(
         experiment_name,
         experiment_params,
         training_params,
@@ -29,7 +29,7 @@ def cnn_training(
         output_dir,
         progress_reporter=None
         ):
-    """Perform cross-validation for CNN surface classification."""
+    """Perform tuning for CNN surface classification."""
     print(f"Running experiment: {experiment_name}")
     print(f"Subset: {experiment_params['channels']}, ",
           f"Configurations: {experiment_params['kinematics']}")
@@ -171,10 +171,22 @@ def cnn_training(
             split_val_loss.append(avg_val_loss)
 
             if early_stopper.early_stop(avg_val_loss):
-                print(f"Split {i + 1} ended on epoch {epoch + 1 - early_stopper.patience}!")
                 break
             if early_stopper.counter == 0:
                 best_model = cnn_model.state_dict()
+
+            # Update progress
+            if progress_reporter:
+                progress_reporter.update_epoch(epoch + 1, avg_train_loss, avg_val_loss)
+            else:
+                epoch_pbar.set_postfix({
+                    'Train Loss': f"{avg_train_loss:.2E}",
+                    'Val Loss': f"{avg_val_loss:.2E}",
+                    'F1': f"{split_accuracy[-1]:.3f}"
+                })
+                epoch_pbar.update(1)
+
+            epoch_pbar.close()
 
         cnn_model.load_state_dict(best_model)
 
@@ -194,19 +206,6 @@ def cnn_training(
         split_test_loss.append(avg_test_loss)
         split_accuracy.append(f1_score(y_true, y_pred, average='weighted'))
 
-        # Update progress
-        if progress_reporter:
-            progress_reporter.update_epoch(epoch + 1, avg_train_loss, avg_val_loss, avg_test_loss)
-        else:
-            epoch_pbar.set_postfix({
-                'Train Loss': f"{avg_train_loss:.2E}",
-                'Val Loss': f"{avg_val_loss:.2E}",
-                'Test Loss': f"{avg_test_loss:.2E}",
-                'F1': f"{split_accuracy[-1]:.3f}"
-            })
-            epoch_pbar.update(1)
-
-        epoch_pbar.close()
         if not progress_reporter:
             fold_pbar.update(1)
 
@@ -214,9 +213,12 @@ def cnn_training(
 
     fold_pbar.close()
 
-    base_filename = '_'.join(['cv', str(num_classes)] + experiment_params['kinematics'] + experiment_params['channels'])
+    base_filename = '_'.join(['cnn', str(num_classes)] + experiment_params['kinematics'] + experiment_params['channels'])
     with open(output_dir / f'{base_filename}.json', 'w', encoding='utf-8') as fp:
         json.dump(history, fp)
+
+    # Average classification reports over splits and save to JSON files
+    average_over_splits(history, base_filename, output_dir)
 
     if progress_reporter:
         progress_reporter.set_completed()
@@ -226,12 +228,12 @@ def main():
     """Main script for loading configuration file and running the experiment."""
     parser = argparse.ArgumentParser(description="CNN Cross-Validation for Surface Classification")
     parser.add_argument(
-        '--config',
-        type=Path,
-        help="YAML configuration file path"
+        '--config-file',
+        type=str,
+        help="YAML configuration file name"
     )
     parser.add_argument(
-        '--experiment-id',
+        '--experiment-name',
         type=str,
         help="Experiment ID to run"
     )
@@ -251,20 +253,26 @@ def main():
     # Setup progress reporter if progress directory is provided
     progress_reporter = None
     if args.progress_dir:
-        progress_file = Path(args.progress_dir) / f"{args.experiment_id}_progress.json"
+        progress_file = Path(args.progress_dir) / f'{args.experiment_name}_progress.json'
         progress_reporter = ProgressReporter(progress_file)
 
-    all_params = load_config(args.config)
+    config_path = Path('configs').joinpath(args.config_file)
+    all_params = load_config(config_path)
     experiments, training_params, dataset_params = all_params.values()
-    experiment_name = args.experiment_id
-    experiment_params = next((params['experiment_params'] for params in experiments if params['experiment_name'] == experiment_name))
+    experiment_name = args.experiment_name
+    experiment_params = next((params['experiment_params'] for params in experiments if extract_experiment_name(params['experiment_params']) == experiment_name))
 
-    cnn_training(
+    generalized_classes = ['3'] if dataset_params['generalized_classes'] else ['10']
+
+    output_dir = args.output_dir.joinpath('_'.join(generalized_classes + experiment_params['kinematics']))
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    cnn_tuning(
         experiment_name,
         experiment_params,
         training_params,
         dataset_params,
-        args.output_dir,
+        output_dir,
         progress_reporter
         )
     time.sleep(1)

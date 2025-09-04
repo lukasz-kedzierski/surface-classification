@@ -1,6 +1,5 @@
 import json
 import numpy as np
-import pandas as pd
 import random
 import time
 
@@ -14,7 +13,7 @@ import torch.nn as nn
 from torch.optim.lr_scheduler import ExponentialLR
 from torch.utils.data import DataLoader
 
-from datasets import SurfaceDataset
+from datasets import CNNTrainingDataset
 from helpers import EarlyStopper, step
 from models import CNNSurfaceClassifier
 
@@ -53,7 +52,7 @@ dataset = [(DATA_DIR.joinpath(key + '.csv'), values['surface'])
            for key, values in labels.items()
            if values['kinematics'] in CONFIGURATIONS and values['spacing'] == 'R1' and 'T1' in values['trajectory']]
 
-X = pd.Series([run[0] for run in dataset], name='bag_name')
+X = [run[0] for run in dataset]
 y_primary = [run[1] for run in dataset]
 
 # y_secondary = []
@@ -85,7 +84,7 @@ X_val.reset_index(drop=True, inplace=True)
 X_test.reset_index(drop=True, inplace=True)
 
 train_dataloader = DataLoader(
-    SurfaceDataset(
+    CNNTrainingDataset(
         X_train,
         y_train,
         sample_freq=SAMPLING_FREQUENCY,
@@ -97,7 +96,7 @@ train_dataloader = DataLoader(
     shuffle=True,
 )
 val_dataloader = DataLoader(
-    SurfaceDataset(
+    CNNTrainingDataset(
         X_val,
         y_val,
         sample_freq=SAMPLING_FREQUENCY,
@@ -108,7 +107,7 @@ val_dataloader = DataLoader(
     batch_size=BATCH_SIZE,
 )
 test_dataloader = DataLoader(
-    SurfaceDataset(
+    CNNTrainingDataset(
         X_test,
         y_test,
         sample_freq=SAMPLING_FREQUENCY,

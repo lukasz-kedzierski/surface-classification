@@ -25,7 +25,7 @@ def xgb_training(
         dataset_params,
         output_dir,
         ):
-    """Perform cross-validation for CNN surface classification."""
+    """Perform cross-validation for XGBoost surface classification."""
     print(f"Running experiment: {experiment_name}")
     print(f"Subset: {experiment_params['channels']}, ",
           f"Configurations: {experiment_params['kinematics']}")
