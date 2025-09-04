@@ -79,7 +79,7 @@ def cnn_tuning(
 
     history = {}
 
-    sss = StratifiedShuffleSplit(test_size=0.2)
+    sss = StratifiedShuffleSplit(n_splits=40, test_size=0.2)
     n_splits = sss.get_n_splits()
     # Initialize progress reporter
     if progress_reporter:

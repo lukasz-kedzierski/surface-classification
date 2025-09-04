@@ -84,7 +84,7 @@ def xgb_training(
     history = {}
     history_features = {}
 
-    sss = StratifiedShuffleSplit(test_size=0.2)
+    sss = StratifiedShuffleSplit(n_splits=40, test_size=0.2)
 
     for i, (training_index, test_index) in enumerate(sss.split(x, y)):
         # Initialize the model in each split
