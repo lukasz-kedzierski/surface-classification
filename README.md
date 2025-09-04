@@ -52,6 +52,11 @@ pip install -e .
 
 This installs all dependencies and makes the `src` modules importable throughout the project.
 
+4. Install PyTorch:
+```bash
+pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu129
+```
+
 ### Hardware Requirements
 
 - **Recommended:** NVIDIA GPU with CUDA support
