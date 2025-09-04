@@ -18,15 +18,13 @@ dependencies = [
     "bagpy>=0.5",
     "cycler>=0.12.1",
     "matplotlib>=3.10.6",
-    "numpy>=2.3.2",
+    "numpy>=2.2.6",
     "pandas>=2.3.2",
     "PyYAML>=6.0.2",
     "scikit-learn>=1.7.1",
-    "scipy>=1.16.1",
+    "scipy>=1.15.3",
     "seaborn>=0.13.2",
     "tqdm>=4.67.1",
-    "torch==2.8.0+cu129",
-    "torchvision==0.23.0+cu129",
     "xgboost>=3.0.4",
 ]
 
