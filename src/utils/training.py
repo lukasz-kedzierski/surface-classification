@@ -1,10 +1,17 @@
 """Module with helper objects used in training and inference of surface prediction models."""
 import json
 import random
+import subprocess
+import sys
+import threading
+import time
 from pathlib import Path
 import numpy as np
+import pandas as pd
 import torch
 import yaml
+from tqdm import tqdm
+from utils.visualization import T_95
 
 
 class EarlyStopper:
@@ -67,7 +74,7 @@ class ProgressReporter:
             'current_epoch': 0,
             'total_epochs': 0,
             'train_loss': 0.0,
-            'val_loss': 0.0
+            'val_loss': 0.0,
         }
         self._write_progress()
 
@@ -118,15 +125,154 @@ class ProgressReporter:
         self._write_progress()
 
 
-def load_config(config_file):
-    """Load configuration from YAML file."""
-    with open(config_file, 'r', encoding='utf-8') as f:
+class ProgressTracker:
+    """Track progress of multiple experiments using file-based communication."""
+
+    def __init__(self, progress_dir, experiment_names):
+        self.progress_dir = Path(progress_dir)
+        self.progress_dir.mkdir(parents=True, exist_ok=True)
+        self.experiment_names = experiment_names
+        self.progress_bars = {}
+        self.stop_monitoring = False
+        self.monitor_thread = None
+
+        # Create progress files for each experiment
+        for exp_name in experiment_names:
+            progress_file = self.progress_dir / f"{exp_name}_progress.json"
+            with open(progress_file, 'w', encoding='utf-8') as f:
+                json.dump({
+                    'total_steps': 0,
+                    'current_step': 0,
+                    'status': 'initializing',
+                    'current_fold': 0,
+                    'total_folds': 0,
+                    'current_epoch': 0,
+                    'total_epochs': 0,
+                    'train_loss': 0.0,
+                    'val_loss': 0.0
+                }, f)
+
+    def start_monitoring(self):
+        """Start monitoring progress in a separate thread."""
+        self.monitor_thread = threading.Thread(target=self._monitor_progress, daemon=True)
+        self.monitor_thread.start()
+
+    def stop_monitoring_func(self):
+        """Stop monitoring progress."""
+        self.stop_monitoring = True
+        if hasattr(self, 'monitor_thread'):
+            self.monitor_thread.join(timeout=1)
+
+        # Close all progress bars
+        for pbar in self.progress_bars.values():
+            pbar.close()
+
+    def _monitor_progress(self):
+        """Monitor progress files and update progress bars."""
+        while not self.stop_monitoring:
+            for exp_name in self.experiment_names:
+                progress_file = self.progress_dir / f"{exp_name}_progress.json"
+
+                try:
+                    if progress_file.exists():
+                        with open(progress_file, 'r', encoding='utf-8') as f:
+                            data = json.load(f)
+
+                        # Create progress bar if it doesn't exist
+                        if exp_name not in self.progress_bars:
+                            if data['total_steps'] > 0:
+                                self.progress_bars[exp_name] = tqdm(
+                                    total=data['total_steps'],
+                                    desc=f"{exp_name}",
+                                    position=len(self.progress_bars),
+                                    leave=True
+                                )
+
+                        # Update existing progress bar
+                        elif exp_name in self.progress_bars:
+                            pbar = self.progress_bars[exp_name]
+
+                            # Update total if it changed
+                            if pbar.total != data['total_steps'] and data['total_steps'] > 0:
+                                pbar.total = data['total_steps']
+                                pbar.refresh()
+
+                            # Update progress
+                            if data['current_step'] > pbar.n:
+                                pbar.update(data['current_step'] - pbar.n)
+
+                            # Update description with current status
+                            status_info = []
+                            if data['status'] == 'training':
+                                status_info.append(f"Fold {data['current_fold']}/{data['total_folds']}")
+                                status_info.append(f"Epoch {data['current_epoch']}/{data['total_epochs']}")
+                                if data['train_loss'] > 0:
+                                    status_info.append(f"Loss: {data['train_loss']:.2E}")
+                            elif data['status'] == 'completed':
+                                status_info.append("✅ COMPLETED")
+                            elif data['status'] == 'failed':
+                                status_info.append("❌ FAILED")
+
+                            desc = f"{exp_name}"
+                            if status_info:
+                                desc += f" - {' | '.join(status_info)}"
+
+                            pbar.set_description(desc)
+
+                except (json.JSONDecodeError, FileNotFoundError, KeyError):
+                    # Skip if file is being written or doesn't exist yet
+                    continue
+
+            time.sleep(0.5)  # Update every 500ms
+
+
+def load_config(config_path):
+    """Load configuration from YAML file.
+
+    Parameters
+    ----------
+    config_path : pathlib.Path
+        Path to the configuration file located in the 'configs' directory.
+
+    Returns
+    -------
+    config : dict
+        Configuration parameters as a dictionary.
+    """
+    with open(config_path, 'r', encoding='utf-8') as f:
         config = yaml.safe_load(f)
     return config
 
 
+def extract_experiment_name(experiment_params):
+    """Extract a unique name for the experiment based on its parameters.
+
+    Parameters
+    ----------
+    experiment_params : dict
+        Dictionary containing experiment parameters.
+
+    Returns
+    -------
+    str
+        Unique experiment name.
+    """
+    return '_'.join(experiment_params['kinematics'] + experiment_params['channels'])
+
+
 def set_seed(seed):
-    """Set random seed for reproducibility."""
+    """Set random seed for reproducibility.
+
+    Parameters
+    ----------
+    seed : int
+        Seed value to set for random number generators.
+
+    Returns
+    -------
+    generator : torch.Generator
+        A torch Generator object initialized with the given seed.
+    """
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -145,16 +291,78 @@ def seed_worker(worker_id):
 
 
 def get_device():
-    """Get the device to run the model on."""
+    """Get the device to run the model on.
+
+    Returns
+    -------
+    torch.device
+        The device to use for computations (CPU or GPU).
+    """
     return "cuda:0" if torch.cuda.is_available() else "cpu"
 
 
 def get_input_size(channels):
-    """Get the input size based on the subset of modalities."""
+    """Get the input size based on the subset of modalities.
+
+    Parameters
+    ----------
+    channels : list of str
+        List of input modalities, e.g., ['imu', 'servo'].
+
+    Returns
+    -------
+    int
+        The total input size based on the selected modalities.
+    """
     if channels is None:
         return 0
     size_map = {'imu': 6, 'servo': 2}
     return sum(size_map[input] for input in channels)
+
+
+def run_training_instance(script_path, config, experiment_name, output_dir, progress_dir=None):
+    """Run a single training instance with the given configuration.
+
+    Parameters
+    ----------
+    script_path : Path
+        Path to the training script to execute.
+    config : str
+        Configuration file name.
+    experiment_name : str
+        Name of the experiment.
+    output_dir : Path
+        Directory to save the output results.
+    progress_dir : Path, optional
+        Directory to save progress files for monitoring.
+
+    Returns
+    -------
+    dict
+        A dictionary containing the configuration, experiment name, return code, and success status.
+    """
+
+    # Build the command
+    cmd = [sys.executable,
+           script_path,
+           '--config',
+           config,
+           '--experiment-name',
+           experiment_name,
+           '--output-dir',
+           output_dir]
+    if progress_dir is not None:
+        cmd += ['--progress-dir', progress_dir]
+
+    print(f"Starting training with config: {experiment_name}")
+    process = subprocess.run(cmd, check=False, text=True)
+
+    return {
+        'config': config,
+        'experiment_name': experiment_name,
+        'returncode': process.returncode,
+        'success': process.returncode == 0
+    }
 
 
 def step(model, batch, criterion, device, train=False, optimizer=None):
@@ -193,3 +401,33 @@ def step(model, batch, criterion, device, train=False, optimizer=None):
         optimizer.step()
 
     return loss, outputs
+
+
+def average_over_splits(results, filename, output_dir):
+    """Averages tuning classification reports over splits.
+
+    Parameters
+    ----------
+    results : dict
+        Dictionary containing classification reports for each split.
+    filename : str
+        Base filename for saving the averaged reports.
+    output_dir : Path
+        Directory to save the output JSON files.
+    """
+    # Update classification reports.
+    for result_dict in results.values():
+        result_dict.update({"accuracy": {"precision": None, "recall": None, "f1-score": result_dict["accuracy"], "support": result_dict['macro avg']['support']}})
+
+    # Load reports to DataFrames.
+    reports = [pd.DataFrame(result_dict).transpose() for result_dict in results.values()]
+
+    # Calculate statistics
+    result_arrays = np.array([report.to_numpy()[:, :3] for report in reports])
+    df_mean, df_ci = reports[0].copy(), reports[0].copy()
+    df_mean.iloc[:, :3] = result_arrays.mean(axis=0)
+    df_ci.iloc[:, :3] = T_95 * result_arrays.std(axis=0) / np.sqrt(len(reports))
+
+    # Dump statistics to JSON files.
+    df_mean.to_json(path_or_buf=output_dir / f'{filename}_mean.json', orient='index')
+    df_ci.to_json(path_or_buf=output_dir / f'{filename}_ci.json', orient='index')
