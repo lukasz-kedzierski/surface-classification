@@ -1,46 +1,37 @@
 experiments:
-  - experiment_name: "CV_4W_imu"
-    experiment_params:
+  - experiment_params:
       kinematics: ["4W"]
       channels: ["imu"]
 
-  - experiment_name: "CV_4W_servo"
-    experiment_params:
+  - experiment_params:
       kinematics: ["4W"]
       channels: ["servo"]
 
-  - experiment_name: "CV_4W_imu_servo"
-    experiment_params:
+  - experiment_params:
       kinematics: ["4W"]
       channels: ["imu", "servo"]
 
-  - experiment_name: "CV_6W_imu"
-    experiment_params:
+  - experiment_params:
       kinematics: ["6W"]
       channels: ["imu"]
 
-  - experiment_name: "CV_6W_servo"
-    experiment_params:
+  - experiment_params:
       kinematics: ["6W"]
       channels: ["servo"]
 
-  - experiment_name: "CV_6W_imu_servo"
-    experiment_params:
+  - experiment_params:
       kinematics: ["6W"]
       channels: ["imu", "servo"]
 
-  - experiment_name: "CV_4W_6W_imu"
-    experiment_params:
+  - experiment_params:
       kinematics: ["4W", "6W"]
       channels: ["imu"]
 
-  - experiment_name: "CV_4W_6W_servo"
-    experiment_params:
+  - experiment_params:
       kinematics: ["4W", "6W"]
       channels: ["servo"]
 
-  - experiment_name: "CV_4W_6W_imu_servo"
-    experiment_params:
+  - experiment_params:
       kinematics: ["4W", "6W"]
       channels: ["imu", "servo"]
 
