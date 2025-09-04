@@ -1,35 +1,321 @@
-import matplotlib
+"""Shared plotting configuration and methods for all visualization scripts."""
+import json
+from collections import defaultdict
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 from cycler import cycler
-from matplotlib import patches
-
-matplotlib.rcParams.update(matplotlib.rcParamsDefault)
-plt.rcParams['figure.figsize'] = [4, 3]
-
-nicer_green = '#159C48'
-nicer_blue = '#00A0FF'
-orange = '#FBBC04'
-pink = '#DB00CF'
-mad_purple = '#732BF5'
-light_green = '#66C2A5'
-main_color = '#3282F6'  # zoom_plot background color
 
 
-def plot_signal(dataframe, columns, title=None, y_label=None, alpha=1):
+# Color definitions
+NICER_GREEN = '#159C48'
+NICER_BLUE = '#00A0FF'
+ORANGE = '#FBBC04'
+PINK = '#DB00CF'
+MAD_PURPLE = '#732BF5'
+LIGHT_GREEN = '#66C2A5'
+
+
+# Default figure parameters
+DEFAULT_FIGURE_PARAMS = {
+    'figure.figsize': [4, 3],
+    'axes.prop_cycle': cycler('color',
+                              [NICER_BLUE, NICER_GREEN, ORANGE, PINK, MAD_PURPLE, LIGHT_GREEN]),
+    'lines.linewidth': 1.5,
+    'font.size': 10,
+}
+
+
+# Statistical constants
+T_95 = 2.228  # t-value for 95% confidence interval
+
+
+def setup_matplotlib(custom_params=None):
+    """Configure matplotlib with default or custom parameters.
+
+    Parameters
+    ----------
+    custom_params : dict, optional
+        Additional or override parameters.
     """
-    Args:
-        dataframe: data from run
-        columns: which signals to plot
-        title: plot name
-        y_label: y-axis name
-        alpha: plot transparency
+    params = DEFAULT_FIGURE_PARAMS.copy()
+    if custom_params:
+        params.update(custom_params)
+
+    plt.rcParams.update(params)
+
+
+def setup_grid(ax=None, major_linewidth=1, minor_linewidth=0.4):
+    """Set up grid styling consistently across plots.
+
+    Parameters
+    ----------
+    ax
+        Matplotlib axis (uses current axis if None).
+    major_linewidth : float
+        Width of major grid lines.
+    minor_linewidth : float
+        Width of minor grid lines.
     """
+    if ax is None:
+        ax = plt.gca()
 
-    plt.rcParams['figure.figsize'] = [8, 3]
-    plt.rcParams["axes.prop_cycle"] = cycler('color', [nicer_blue, nicer_green, orange])
-    plt.rcParams['lines.linewidth'] = 1.5
-    plt.rcParams['font.size'] = 10
+    ax.grid(which='major', axis='both', linewidth=major_linewidth)
+    ax.grid(which='minor', axis='both', linewidth=minor_linewidth)
+    ax.minorticks_on()
 
+
+def load_cv_results(filenames, results_dir):
+    """Load CV results from JSON files.
+
+    Parameters
+    ----------
+    filenames : list of str
+        List of filenames (with extension) to load.
+    results_dir : Path
+        Directory where results are stored.
+
+    Returns
+    -------
+    results : dict
+        Dictionary of loaded results.
+    """
+    results = {}
+    for filename in filenames:
+        filepath = results_dir / f'{filename}.json'
+        with open(filepath, encoding='utf-8') as fp:
+            results[filename] = json.load(fp)
+    return results
+
+
+def load_tuning_results(filename, results_dir):
+    """Load CV results from JSON files.
+
+    Parameters
+    ----------
+    filename : str
+        Filenames (without extension) to load.
+    results_dir : Path
+        Directory where results are stored.
+
+    Returns
+    -------
+    results : dict of dicts
+        Dictionary of loaded results.
+    """
+    result = {}
+    filepath_mean = results_dir / f'{filename}_mean.json'
+    with open(filepath_mean, encoding='utf-8') as fp:
+        result['mean'] = json.load(fp)
+    filepath_ci = results_dir / f'{filename}_ci.json'
+    with open(filepath_ci, encoding='utf-8') as fp:
+        result['ci'] = json.load(fp)
+    return result
+
+
+def experiments_to_labels(files):
+    """Map experiment filenames to plot labels.
+
+    Parameters
+    ----------
+    files : list of str
+        List of filenames.
+
+    Returns
+    -------
+    labels : list of str
+        Corresponding plot labels.
+    """
+    labels = []
+    for filename in files:
+        if 'imu' in filename:
+            if 'servo' in filename:
+                labels.append('both')
+            else:
+                labels.append('imu')
+        else:
+            labels.append('est. power')
+    return labels
+
+
+def build_directory_dict(root):
+    """Builds a nested dictionary of directories and files using pathlib.
+
+    Parameters
+    ----------
+    root : Path
+        Root directory to start the search.
+
+    Returns
+    -------
+    result : dict
+        Nested dictionary with structure {model: {classes: {kinematics: [filenames]}}}.
+    """
+    result = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+
+    for json_file in root.rglob('*.json'):
+        # Get relative path parts.
+        relative = json_file.relative_to(root)
+        parts = relative.parts
+
+        # Expected model/classes/kinematics/file.json.
+        if len(parts) >= 4:
+            model = parts[-4]
+            classes = parts[-3]  # could be version, category, etc.
+            kinematics = parts[-2]
+            filename = parts[-1]
+
+            if not any(substring in filename for substring in ('mean', 'ci')):
+                result[model][classes][kinematics].append(filename.removesuffix('.json'))
+
+    for model, model_level in result.items():
+        for classes, class_level in model_level.items():
+            for files in class_level.values():
+                files.sort(key=len)
+
+            sorted_keys = sorted(class_level, key=len)
+            sorted_dict = {key: class_level[key] for key in sorted_keys}
+            result[model][classes] = sorted_dict
+
+    # Convert nested defaultdicts to regular dicts
+    return {
+        model: {
+            classes: dict(kinematics)
+            for classes, kinematics in class_levels.items()
+        }
+        for model, class_levels in result.items()
+    }
+
+
+def plot_cv_results(model, classes, experiment_configurations, result_dir):
+    """Plot cross-validation results with confidence intervals.
+
+    Parameters
+    ----------
+    results : dict
+        Dictionary of loaded CV results.
+    labels : tuple of str
+        Plot labels for each result set.
+    output_path : Path
+        Figure file path.
+    """
+    # Get figure directory path.
+    figures_dir = result_dir.joinpath('figures', 'cv')
+    figures_dir.mkdir(parents=True, exist_ok=True)
+
+    for kinematics, filenames in experiment_configurations.items():
+        # Load results.
+        results_dir = result_dir.joinpath('logs', 'cv', model, classes, kinematics)
+        results = load_cv_results(filenames, results_dir)
+
+        # Gather labels.
+        labels = experiments_to_labels(filenames)
+
+        # Plot results.
+        plt.figure()
+        output_path = figures_dir.joinpath(f'cv_{model}_{classes}_{kinematics}.png')
+
+        for result, label in zip(results.values(), labels):
+            df = pd.DataFrame(result)
+            res_array = np.array(df.loc['accuracy'].values.tolist()).T
+            x = np.arange(1, res_array.shape[0] + 1)
+
+            # Calculate statistics
+            average_f1 = res_array.mean(axis=1)
+            std_dev_f1 = res_array.std(axis=1)
+            ci = T_95 * std_dev_f1 / np.sqrt(10)
+
+            # Plot with confidence interval
+            plt.plot(x, average_f1, label=label)
+            plt.fill_between(x, (average_f1 - ci), (average_f1 + ci), alpha=.2)
+
+        # Configure plot
+        plt.xlim(1, 100)
+        plt.ylim(0.4, 1)
+        plt.xlabel('epoch')
+        plt.ylabel('average F1-score')
+        plt.grid(which='major', axis='both', linewidth=1)
+        plt.grid(which='minor', axis='both', linewidth=0.4)
+        plt.minorticks_on()
+        plt.legend(loc='lower right')
+        plt.tight_layout()
+        plt.savefig(output_path, dpi=300, bbox_inches="tight")
+        plt.close()
+
+
+def plot_tuning_results(model, classes, experiment_configurations, result_dir):
+    """Plot tuning results with confidence intervals.
+
+    Parameters
+    ----------
+    results : dict
+        Dictionary of loaded tuning results.
+    labels : tuple of str
+        Plot labels for each result set.
+    output_path : Path
+        Figure file path.
+    """
+    # Get figure directory path.
+    figures_dir = result_dir.joinpath('figures', 'tuning')
+    figures_dir.mkdir(parents=True, exist_ok=True)
+
+    plt.figure()
+    output_path = figures_dir.joinpath(f'tuning_{model}_{classes}.png')
+
+    width = 0.2
+    ind = np.arange(3)  # the x locations for the groups
+
+    sorted_by_channel = defaultdict(list)
+    for kinematics, filenames in experiment_configurations.items():
+        sorted_by_channel['imu'].append((kinematics, filenames[0]))
+        sorted_by_channel['est. power'].append((kinematics, filenames[1]))
+        sorted_by_channel['both'].append((kinematics, filenames[2]))
+
+    for i, (label, channel_data) in enumerate(sorted_by_channel.items()):
+        # Load results.
+        results = {}
+        for kinematics, filename in channel_data:
+            results_dir = result_dir.joinpath('logs', 'tuning', model, classes, kinematics)
+            results[filename] = load_tuning_results(filename, results_dir)
+        average_f1 = [result['mean']['weighted avg']['f1-score'] for result in results.values()]
+        ci_f1 = [result['ci']['weighted avg']['f1-score'] for result in results.values()]
+
+        plt.bar(ind + i * width, average_f1, width=width, yerr=ci_f1, label=label, capsize=4, alpha=0.6)
+
+    # Configure plot
+    plt.xticks(ticks=np.arange(len(experiment_configurations)) + width, labels=['4W', '6W', '4W, 6W'])
+    plt.yticks(ticks=np.arange(5, 11) / 10)
+    plt.ylim(0.5, 1)
+    plt.xlabel('configuration')
+    plt.ylabel('average F1 score')
+    plt.grid(which='major', axis='y', linewidth=1)
+    plt.grid(which='minor', axis='y', linewidth=0.4)
+    plt.minorticks_on()
+    plt.tick_params(axis='x', which='minor', bottom=False)
+    plt.legend(bbox_to_anchor=(1, 0.5), loc='center left')
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300, bbox_inches="tight")
+    plt.close()
+
+
+def plot_signal(dataframe, columns, title=None, y_label=None, alpha=1, output_dir=None):
+    """Plot time series signals in a single figure.
+
+    Parameters
+    ----------
+    dataframe : pd.DataFrame
+        Data from run.
+    columns : list of str
+        Which signals to plot.
+    title : str
+        Plot title.
+    y_label : str
+        y-axis label.
+    alpha : float
+        Plot transparency.
+    output_dir : Path
+        Directory to save the plot.
+    """
     time = dataframe['Time'] - dataframe['Time'].min()
     for col in columns:
         plt.plot(
@@ -45,23 +331,24 @@ def plot_signal(dataframe, columns, title=None, y_label=None, alpha=1):
         plt.ylabel(y_label)
     plt.legend(loc="upper right")
     plt.tight_layout()
-    plt.savefig(f'../../results/{y_label[:10]}.png', dpi=300, bbox_inches="tight")
+    plt.savefig(output_dir / f'{y_label[:10]}.png', dpi=300, bbox_inches="tight")
     plt.show()
 
 
-def plot_many(dataframe, columns, y_label=None, alpha=1):
-    """
-    Args:
-        dataframe: data from run
-        columns: which signals to plot
-        y_label: y-axis name
-        alpha: plot transparency
-    """
-    plt.rcParams['figure.figsize'] = [8, 3]
-    plt.rcParams["axes.prop_cycle"] = cycler('color', [nicer_blue, nicer_green, pink, orange])
-    plt.rcParams['lines.linewidth'] = 1.5
-    plt.rcParams['font.size'] = 10
+def plot_many(dataframe, columns, y_label=None, alpha=1, output_dir=None):
+    """Plot time series signals in separate axes.
 
+    Parameters
+    ----------
+    dataframe : pd.DataFrame
+        Data from run.
+    columns : list of str
+        Which signals to plot.
+    y_label : str
+        y-axis label.
+    alpha : float
+        Plot transparency.
+    """
     fig, axes = plt.subplots(2, 2, sharex=True, sharey=True)
 
     time = dataframe['Time'] - dataframe['Time'].min()
@@ -81,108 +368,5 @@ def plot_many(dataframe, columns, y_label=None, alpha=1):
     if y_label:
         fig.supylabel(y_label)
     plt.tight_layout()
-    plt.savefig(f'../../results/{y_label[:10]}.png', dpi=300, bbox_inches="tight")
-    plt.show()
-
-
-def zoom_plot(dataframe, columns, y_label=None):
-    """
-    Args:
-        dataframe: data from run
-        columns: which signals to plot
-        y_label: y-axis name
-    """
-    plt.rcParams['figure.figsize'] = [4, 3]
-    plt.rcParams["axes.prop_cycle"] = cycler('color', [nicer_blue, nicer_green])
-    plt.rcParams['lines.linewidth'] = 1.5
-    plt.rcParams['font.size'] = 10
-
-    # rectangle and connection patches coordinates
-    origin_x, origin_y = 8, 0
-    duration = 2.7
-    height = 0.9
-    alpha = 0.1
-
-    rect = patches.Rectangle((origin_x, origin_y), duration, height, alpha=alpha, color=main_color)
-
-    time = dataframe['Time'] - dataframe['Time'].min()
-    zoom_start = time[time >= origin_x].index[0]  # 161
-    zoom_end = time[time <= origin_x + 2.7].index[-1]  # 214
-
-    # Create figures / axes
-    fig = plt.figure()
-    top_left = fig.add_subplot(2, 2, 1)
-    top_left.set_xticks([])
-    top_left.set_yticks([])
-    top_left.patch.set_alpha(alpha)
-    top_left.set_facecolor(main_color)
-
-    # top_right = fig.add_subplot(2, 2, 2)
-    # top_right.axis("off")
-
-    bottom = fig.add_subplot(2, 1, 2)
-    bottom.set_xlabel('time [s]')
-
-    # fig.subplots_adjust(hspace=.55)
-
-    for col in columns:
-        bottom.plot(
-            time,
-            dataframe[col],
-            label=col,
-        )
-    bottom.add_patch(rect)
-    bottom.set_ylabel(y_label)
-    # bottom.legend(['mean est. power left', 'mean est. power right'], loc="upper right")
-
-    for col in columns:  # plot general figures
-        top_left.plot(
-            time.iloc[zoom_start:zoom_end],
-            dataframe[col].iloc[zoom_start:zoom_end],
-            label='_nolegend_',
-        )
-
-    col = columns[1]  # add markers
-    marker_on = list(range(0, 53))
-    top_left.plot(
-        time.iloc[zoom_start:zoom_end],
-        dataframe[col].iloc[zoom_start:zoom_end],
-        label='selected samples',
-        linewidth=0,  # turn off line visibility
-        markevery=marker_on[::2],
-        marker='o',
-        markerfacecolor='darkgreen',
-        markeredgecolor='darkgreen',
-        markersize=2
-    )
-
-    top_left.plot(
-        time.iloc[zoom_start:zoom_end],
-        dataframe[col].iloc[zoom_start:zoom_end],
-        label='discarded samples',
-        linewidth=0,
-        markevery=marker_on[1::2],
-        marker='o',
-        markerfacecolor='indianred',
-        markeredgecolor='indianred',
-        markersize=2
-    )
-
-    top_left.legend(loc='center left', bbox_to_anchor=[1.0, 0.5])
-
-    # Add the connection patches
-    fig.add_artist(patches.ConnectionPatch(
-        xyA=(0, 0), coordsA=top_left.transAxes,  # small figure left point of tangency
-        xyB=(origin_x, height), coordsB=bottom.transData,
-        color='black'
-    ))
-
-    fig.add_artist(patches.ConnectionPatch(
-        xyA=(1, 0), coordsA=top_left.transAxes,  # small figure left point of tangency
-        xyB=(origin_x + duration, height), coordsB=bottom.transData,
-        color='black'
-    ))
-
-    # plt.tight_layout()
-    plt.savefig(r'../../results/zoom_plot.png', dpi=300, bbox_inches="tight")
+    plt.savefig(output_dir / f'{y_label[:10]}.png', dpi=300, bbox_inches="tight")
     plt.show()
