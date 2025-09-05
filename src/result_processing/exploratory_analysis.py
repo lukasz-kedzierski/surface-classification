@@ -45,6 +45,7 @@ def analyze_run(bag_path, output_dir):
         wheel_velocity_dataframe[wheel_angular_velocity_cols],
         True
         )
+    power_dataframe = pd.concat([wheel_load_dataframe['Time'], power_dataframe], axis=1)
 
     power_cols = [col for col in power_dataframe.columns if 'estimated_power' in col]
 
@@ -95,8 +96,10 @@ def analyze_dataset(dataset_params, output_dir):
     data_dir = Path(dataset_params['data_dir'])
     labels_file = Path(dataset_params['labels_file'])
 
-    image_dir = output_dir.joinpath('images')
+    image_dir = output_dir.joinpath('figures')
     image_dir.mkdir(parents=True, exist_ok=True)
+    table_dir = output_dir.joinpath('logs', 'mutual_information')
+    table_dir.mkdir(parents=True, exist_ok=True)
 
     with open(labels_file, encoding='utf-8') as fp:
         labels = json.load(fp)
@@ -117,8 +120,16 @@ def analyze_dataset(dataset_params, output_dir):
         y = le.transform(target_classes)
 
     df_list = [pd.read_csv(file, index_col=[0]) for file in filenames]
+    for df, label in zip(df_list, y):
+        df['target'] = label
+    final_df = pd.concat(df_list, axis=0)
 
-    x = pd.concat(df_list, axis=0)
+    columns = []
+    for col_group in dataset_params['df_columns']:
+        for cols in col_group.values():
+            columns.extend(cols)
+    x = final_df[columns]
+    y = final_df['target']
 
     mutual_information_score = mutual_info_classif(x.drop(columns=['Time']), y)
     mutual_information_df = pd.DataFrame(
@@ -126,7 +137,7 @@ def analyze_dataset(dataset_params, output_dir):
         columns=x.columns[1:],
         index=['Mutual Information']
         )
-    mutual_information_df.to_json(output_dir / 'mutual_information.json')
+    mutual_information_df.to_json(table_dir / 'mutual_information.json')
 
     setup_matplotlib({'font.size': 8})
     corr_matrix = x.drop(columns=['Time']).corr()
@@ -139,20 +150,22 @@ def main():
     """Main script for dataset analysis."""
     parser = argparse.ArgumentParser(description="Dataset Analysis for Surface Classification")
     parser.add_argument(
-        '--config',
+        '--config-file',
         type=Path,
         help="YAML configuration file path"
     )
     parser.add_argument(
         '--output-dir',
+        default='results',
         type=Path,
         help="Output directory path"
     )
     args = parser.parse_args()
 
-    analysis_params = load_config(args.config)
+    config_path = Path('configs').joinpath(args.config_file)
+    analysis_params = load_config(config_path)
     dataset_params = analysis_params['dataset_params']
-    bag_path = analysis_params['bag_path']
+    bag_path = Path(analysis_params['bag_path'])
 
     analyze_run(bag_path, args.output_dir)
     analyze_dataset(dataset_params, args.output_dir)
