@@ -1,6 +1,5 @@
 """Main launcher for XGB experiments."""
 import argparse
-import json
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -16,7 +15,7 @@ def main():
                         help='Training script name')
     parser.add_argument('--output-dir', type=Path, default='results/logs',
                         help='Base directory for experiment outputs')
-    parser.add_argument('--max-parallel', type=int, default=4,
+    parser.add_argument('--max-parallel', type=int, default=9,
                         help='Maximum number of parallel processes')
 
     args = parser.parse_args()
@@ -32,9 +31,6 @@ def main():
     output_dir = args.output_dir.joinpath(experiment_type, experiment_model)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Create progress directory
-    progress_dir = output_dir / 'progress'
-
     # Get script path.
     script_path = Path('src/experiments').joinpath(experiment_type, args.script_name)
 
@@ -48,7 +44,7 @@ def main():
         # Submit all jobs
         experiments = config_params['experiments']
         future_to_config = {
-            executor.submit(run_training_instance, script_path, args.config_file, experiment_name, output_dir, progress_dir): experiment_name
+            executor.submit(run_training_instance, script_path, args.config_file, experiment_name, output_dir): experiment_name
             for experiment_name in experiment_names
         }
 
@@ -56,20 +52,6 @@ def main():
         for future in as_completed(future_to_config):
             result = future.result()
             results.append(result)
-
-            # Update progress file to mark as completed/failed
-            exp_name = result['experiment_name']
-            progress_file = progress_dir / f"{exp_name}_progress.json"
-
-            if progress_file.exists():
-                with open(progress_file, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-
-                data['status'] = 'completed' if result['success'] else 'failed'
-                data['current_step'] = data['total_steps']
-
-                with open(progress_file, 'w', encoding='utf-8') as f:
-                    json.dump(data, f)
 
     # Summary
     successful = sum(1 for r in results if r['success'])
