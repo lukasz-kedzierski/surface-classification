@@ -15,7 +15,10 @@ from sklearn.preprocessing import LabelEncoder
 from torch.utils.data import DataLoader, Subset
 from xgboost import XGBClassifier
 from utils.datasets import XGBTrainingDataset
-from utils.training import load_config, set_seed, seed_worker
+from utils.training import load_config, extract_experiment_name, set_seed, seed_worker, average_over_splits
+
+
+THRESHOLD = 5e-3
 
 
 def xgb_training(
@@ -127,8 +130,10 @@ def xgb_training(
 
         # Find the most important features from the best estimator
         importances = clf_search.best_estimator_.feature_importances_
-        idx = np.argsort(importances)  # indexes with the highest importance
-        best_features = idx[-25:]  # 25 best features
+        idx = np.arange(len(importances))
+
+        # Take features above threshold.
+        best_features = idx[importances > THRESHOLD]
 
         # Fit the estimator on the best sets of hyperparameters and features
         xgb_tuned = XGBClassifier(
@@ -140,7 +145,7 @@ def xgb_training(
         y_pred = xgb_tuned.predict(x_test[:, best_features])
 
         history[i + 1] = classification_report(y_true, y_pred, output_dict=True)
-        history_features[i + 1] = cv_data.engineered_features[best_features[::-1]].tolist()
+        history_features[i + 1] = {feature_name: feature_importance for feature_name, feature_importance in zip(cv_data.engineered_features[best_features].tolist(), importances[best_features].tolist())}
 
     base_filename = '_'.join(['xgb', str(num_classes)] + experiment_params['kinematics'] + experiment_params['channels'])
     with open(output_dir / f'{base_filename}.json', 'w', encoding='utf-8') as fp:
@@ -148,17 +153,20 @@ def xgb_training(
     with open(output_dir / f'{base_filename}_features.json', 'w', encoding='utf-8') as fp:
         json.dump(history_features, fp)
 
+    # Average classification reports over splits and save to JSON files
+    average_over_splits(history, base_filename, output_dir)
+
 
 def main():
     """Main script for loading configuration file and running the experiment."""
     parser = argparse.ArgumentParser(description="CNN Cross-Validation for Surface Classification")
     parser.add_argument(
-        '--config',
-        type=Path,
-        help="YAML configuration file path"
+        '--config-file',
+        type=str,
+        help="YAML configuration file name"
     )
     parser.add_argument(
-        '--experiment-id',
+        '--experiment-name',
         type=str,
         help="Experiment ID to run"
     )
@@ -169,17 +177,23 @@ def main():
     )
     args = parser.parse_args()
 
-    all_params = load_config(args.config)
+    config_path = Path('configs').joinpath(args.config_file)
+    all_params = load_config(config_path)
     experiments, training_params, dataset_params = all_params.values()
-    experiment_name = args.experiment_id
-    experiment_params = next((params['experiment_params'] for params in experiments if params['experiment_name'] == experiment_name))
+    experiment_name = args.experiment_name
+    experiment_params = next((params['experiment_params'] for params in experiments if extract_experiment_name(params['experiment_params']) == experiment_name))
+
+    generalized_classes = '3' if dataset_params['generalized_classes'] else '10'
+
+    output_dir = args.output_dir.joinpath(generalized_classes, '_'.join(experiment_params['kinematics']))
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     xgb_training(
         experiment_name,
         experiment_params,
         training_params,
         dataset_params,
-        args.output_dir,
+        output_dir,
         )
     time.sleep(1)
 

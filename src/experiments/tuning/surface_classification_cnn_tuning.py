@@ -262,9 +262,9 @@ def main():
     experiment_name = args.experiment_name
     experiment_params = next((params['experiment_params'] for params in experiments if extract_experiment_name(params['experiment_params']) == experiment_name))
 
-    generalized_classes = ['3'] if dataset_params['generalized_classes'] else ['10']
+    generalized_classes = '3' if dataset_params['generalized_classes'] else '10'
 
-    output_dir = args.output_dir.joinpath('_'.join(generalized_classes + experiment_params['kinematics']))
+    output_dir = args.output_dir.joinpath(generalized_classes, '_'.join(experiment_params['kinematics']))
     output_dir.mkdir(parents=True, exist_ok=True)
 
     cnn_tuning(
