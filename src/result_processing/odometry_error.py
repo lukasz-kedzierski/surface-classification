@@ -1,3 +1,4 @@
+from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -13,7 +14,7 @@ plt.rcParams['font.size'] = 10
 
 # read file
 errors = pd.read_excel(
-    "../results/odom_error.ods",
+    Path("results/odom_error.ods"),
     sheet_name=None,
     header=None,
     names=['surface', 'error'],
@@ -36,13 +37,15 @@ fixed_classes = [
 
 assigned_labels = [0 if label in ('3_Wykladzina_jasna', '4_Trawa')
                    else 2 if label in ('5_Spienione_PCV', '8_Pusta_plyta', '9_podklady', '10_Mata_ukladana')
-                   else 1 for label in original_classes]    # Pawel set
+                   else 1 for label in original_classes]
+
+output_dir = Path('results/figures')
 
 # plot results
 colors = [nicer_blue if label == 0 else nicer_green if label == 1 else orange for label in assigned_labels]
 scatter = sns.scatterplot(
     x=fixed_classes,
-    y=errors['6W']['error'],
+    y=errors['4W']['error'],
     hue=assigned_labels,
     palette=[nicer_blue, nicer_green, orange],
     s=40,
@@ -54,4 +57,4 @@ plt.xlabel('original labels')
 plt.ylabel('scaled odometry error')
 plt.grid()
 plt.legend(loc='lower right')
-plt.savefig(r'../results/odom_error_6W.png', dpi=300, bbox_inches="tight")
+plt.savefig(output_dir / 'odom_error_4W.png', dpi=1000, bbox_inches="tight")

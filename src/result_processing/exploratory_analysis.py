@@ -21,7 +21,7 @@ def analyze_run(bag_path, output_dir):
     output_dir : Path
         Directory to save the plots.
     """
-    image_dir = output_dir.joinpath('images')
+    image_dir = output_dir.joinpath('figures')
     image_dir.mkdir(parents=True, exist_ok=True)
 
     # Read IMU and servo data.
@@ -47,10 +47,9 @@ def analyze_run(bag_path, output_dir):
         )
     power_dataframe = pd.concat([wheel_load_dataframe['Time'], power_dataframe], axis=1)
 
-    power_cols = [col for col in power_dataframe.columns if 'estimated_power' in col]
+    power_cols = [col for col in power_dataframe.columns if 'mean_power' in col]
 
     # Plot all manuscript figures.
-    setup_matplotlib({'figure.figsize': [8, 3]})
     plot_signal(
         imu_dataframe,
         imu_lin_acc_cols,
@@ -68,7 +67,7 @@ def analyze_run(bag_path, output_dir):
     plot_many(
         wheel_velocity_dataframe,
         wheel_angular_velocity_cols,
-        y_label='servo angular velocity [rpm/min]',
+        y_label=r'servo angular velocity [$\mathregular{rpm/min}$]',
         output_dir=image_dir
         )
     plot_many(
@@ -143,7 +142,7 @@ def analyze_dataset(dataset_params, output_dir):
     corr_matrix = x.drop(columns=['Time']).corr()
     sns.heatmap(corr_matrix, vmin=-1, vmax=1, cmap="Blues", annot=True, linewidths=0.5, fmt=".2f")
     plt.xticks(rotation=45, ha='right')
-    plt.savefig(image_dir / 'corr_plot.png', dpi=300, bbox_inches="tight")
+    plt.savefig(image_dir / 'corr_plot.png', dpi=1000, bbox_inches="tight")
 
 
 def main():
@@ -168,7 +167,7 @@ def main():
     bag_path = Path(analysis_params['bag_path'])
 
     analyze_run(bag_path, args.output_dir)
-    analyze_dataset(dataset_params, args.output_dir)
+    # analyze_dataset(dataset_params, args.output_dir)
 
 
 if __name__ == "__main__":

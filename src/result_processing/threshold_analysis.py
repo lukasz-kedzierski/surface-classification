@@ -17,6 +17,7 @@ from torch.utils.data import DataLoader, Subset
 from xgboost import XGBClassifier
 from utils.datasets import XGBTrainingDataset
 from utils.training import load_config, set_seed, seed_worker
+from utils.visualization import setup_matplotlib, T_95
 
 
 def xgb_threshold_analysis(
@@ -24,6 +25,7 @@ def xgb_threshold_analysis(
         experiment_params,
         training_params,
         dataset_params,
+        output_dir
         ):
     """Perform cross-validation for XGBoost threshold analysis."""
 
@@ -37,8 +39,8 @@ def xgb_threshold_analysis(
     data_dir = Path(dataset_params['data_dir'])
     labels_file = Path(dataset_params['labels_file'])
 
-    image_dir = Path('results/figures')
-    image_dir.mkdir(parents=True, exist_ok=True)
+    result_dir = output_dir.joinpath('logs', 'threshold_analysis')
+    result_dir.mkdir(parents=True, exist_ok=True)
 
     with open(labels_file, encoding='utf-8') as fp:
         labels = json.load(fp)
@@ -84,9 +86,6 @@ def xgb_threshold_analysis(
         'reg_alpha': [0.1, 0.5],
         'reg_lambda': [0.1, 0.5],
     }
-
-    t_95 = 2.228
-    nicer_blue = '#00A0FF'
 
     thresholds = [0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05]
     threshold_history = defaultdict(list)
@@ -134,7 +133,7 @@ def xgb_threshold_analysis(
 
         # Find the most important features from the best estimator
         importances = clf_search.best_estimator_.feature_importances_
-        idx = np.arange(len(importances))  # indexes with the highest importance
+        idx = np.arange(len(importances))
 
         # Test different thresholds
         for threshold in thresholds:
@@ -153,33 +152,39 @@ def xgb_threshold_analysis(
             f1 = f1_score(y_true, y_pred, average='weighted')
             threshold_history[threshold].append(f1)
 
+    # Save results
+    with open(result_dir / 'threshold_analysis.json', 'w', encoding='utf-8') as f:
+        json.dump(threshold_history, f)
+
+
+def plot_threshold_analysis(output_dir):
+    thresholds = [0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05]
+    image_dir = output_dir.joinpath('figures')
+    image_dir.mkdir(parents=True, exist_ok=True)
+
+    with open(output_dir.joinpath('logs', 'threshold_analysis', 'threshold_analysis.json'), 'r', encoding='utf-8') as f:
+        threshold_history = json.load(f)
+
     # Calculate average F1-scores and standard deviations
     average_f1 = []
     ci_f1 = []
 
     for threshold in thresholds:
-        scores = threshold_history[threshold]
+        scores = threshold_history[str(threshold)]
         average_f1.append(np.mean(scores))
-        ci_f1.append(t_95 * np.std(scores) / np.sqrt(len(scores)))
+        ci_f1.append(T_95 * np.std(scores) / np.sqrt(len(scores)))
 
-    # Find optimal threshold
-    optimal_idx = np.argmax(average_f1)
-    optimal_threshold = thresholds[optimal_idx]
-
-    plt.figure(figsize=(12, 3))
+    plt.figure(figsize=(8, 3))
     plt.errorbar(thresholds, average_f1, yerr=ci_f1,
                  marker='o', capsize=4, capthick=1, linewidth=1, markersize=4, c='k')
 
-    plt.axvline(optimal_threshold, c=nicer_blue)
-
     plt.xlabel('importance threshold')
     plt.ylabel('average F1-score')
-    plt.title(f"Optimal threshold: {optimal_threshold} (f1-score = {average_f1[optimal_idx]:.4f})")
     plt.grid(True)
     plt.xscale("log")
     plt.xlim([5e-06, 1e-01])
     plt.tight_layout()
-    plt.savefig(image_dir.joinpath('threshold_analysis.png'), dpi=300)
+    plt.savefig(image_dir.joinpath('threshold_analysis.png'), dpi=1000)
 
 
 def main():
@@ -187,14 +192,18 @@ def main():
 
     all_params = load_config(Path('configs/threshold_analysis.yaml'))
     experiment_name, experiment_params, training_params, dataset_params = all_params.values()
+    output_dir = Path('results')
 
     xgb_threshold_analysis(
         experiment_name,
         experiment_params,
         training_params,
         dataset_params,
+        output_dir
         )
     time.sleep(1)
+
+    plot_threshold_analysis(output_dir)
 
 
 if __name__ == "__main__":

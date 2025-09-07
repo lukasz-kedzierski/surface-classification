@@ -3,7 +3,7 @@ import argparse
 import json
 from pathlib import Path
 import pandas as pd
-from scipy.stats import ks_2samp, anderson_ksamp
+from scipy.stats import ks_2samp
 from utils.visualization import build_directory_dict
 
 
