@@ -24,6 +24,7 @@ DEFAULT_FIGURE_PARAMS = {
     'lines.linewidth': 1.5,
     'font.size': 10,
 }
+DPI = 1000
 
 
 # Statistical constants
@@ -217,7 +218,7 @@ def plot_cv_results(model, classes, experiment_configurations, result_dir):
 
         for result, label in zip(results.values(), labels):
             df = pd.DataFrame(result)
-            res_array = np.array(df.loc['accuracy'].values.tolist()).T
+            res_array = np.array(df.loc['f1_score'].values.tolist()).T
             x = np.arange(1, res_array.shape[0] + 1)
 
             # Calculate statistics
@@ -239,7 +240,7 @@ def plot_cv_results(model, classes, experiment_configurations, result_dir):
         plt.minorticks_on()
         plt.legend(loc='lower right')
         plt.tight_layout()
-        plt.savefig(output_path, dpi=300, bbox_inches="tight")
+        plt.savefig(output_path, dpi=DPI, bbox_inches="tight")
         plt.close()
 
 
@@ -294,7 +295,7 @@ def plot_tuning_results(model, classes, experiment_configurations, result_dir):
     plt.tick_params(axis='x', which='minor', bottom=False)
     plt.legend(bbox_to_anchor=(1, 0.5), loc='center left')
     plt.tight_layout()
-    plt.savefig(output_path, dpi=300, bbox_inches="tight")
+    plt.savefig(output_path, dpi=DPI, bbox_inches="tight")
     plt.close()
 
 
@@ -316,22 +317,23 @@ def plot_signal(dataframe, columns, title=None, y_label=None, alpha=1, output_di
     output_dir : Path
         Directory to save the plot.
     """
+    setup_matplotlib({'figure.figsize': [8, 3], 'font.size': 12})
+    fig, ax = plt.subplots(layout='constrained')
     time = dataframe['Time'] - dataframe['Time'].min()
     for col in columns:
-        plt.plot(
+        ax.plot(
             time,
             dataframe[col],
             label=col,
             alpha=alpha,
         )
     if title:
-        plt.title(title)
-    plt.xlabel('time [s]')
+        ax.title(title)
+    ax.set_xlabel('time [s]')
     if y_label:
-        plt.ylabel(y_label)
-    plt.legend(loc="upper right")
-    plt.tight_layout()
-    plt.savefig(output_dir / f'{y_label[:10]}.png', dpi=300, bbox_inches="tight")
+        ax.set_ylabel(y_label)
+    fig.legend(loc='outside upper right', ncol=len(columns))
+    plt.savefig(output_dir / f'{y_label[:10]}.png', dpi=DPI, bbox_inches="tight")
     plt.show()
 
 
@@ -349,6 +351,7 @@ def plot_many(dataframe, columns, y_label=None, alpha=1, output_dir=None):
     alpha : float
         Plot transparency.
     """
+    setup_matplotlib({'figure.figsize': [8, 3]})
     fig, axes = plt.subplots(2, 2, sharex=True, sharey=True)
 
     time = dataframe['Time'] - dataframe['Time'].min()
@@ -368,5 +371,5 @@ def plot_many(dataframe, columns, y_label=None, alpha=1, output_dir=None):
     if y_label:
         fig.supylabel(y_label)
     plt.tight_layout()
-    plt.savefig(output_dir / f'{y_label[:10]}.png', dpi=300, bbox_inches="tight")
+    plt.savefig(output_dir / f'{y_label[:10]}.png', dpi=DPI, bbox_inches="tight")
     plt.show()
