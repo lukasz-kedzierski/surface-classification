@@ -3,7 +3,6 @@
 This script performs cross-validation for training a CNN model on surface classification task
 given a set of input signals in order to evaluate its expected performance.
 """
-
 import argparse
 import json
 import time
@@ -231,7 +230,7 @@ def main():
     experiment_name = args.experiment_name
     experiment_params = next((params['experiment_params'] for params in experiments if extract_experiment_name(params['experiment_params']) == experiment_name))
 
-    generalized_classes = ['3'] if dataset_params['generalized_classes'] else ['10']
+    generalized_classes = '3' if dataset_params['generalized_classes'] else '10'
 
     output_dir = args.output_dir.joinpath(generalized_classes, '_'.join(experiment_params['kinematics']))
     output_dir.mkdir(parents=True, exist_ok=True)
