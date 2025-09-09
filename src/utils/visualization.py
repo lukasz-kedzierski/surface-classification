@@ -1,9 +1,14 @@
 """Shared plotting configuration and methods for all visualization scripts."""
+
 import json
+import os
 from collections import defaultdict
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 from cycler import cycler
 
 
@@ -31,7 +36,13 @@ DPI = 1000
 T_95 = 2.228  # t-value for 95% confidence interval
 
 
-def setup_matplotlib(custom_params=None):
+# Directories
+IMAGE_DIR = Path('figures')
+TABLE_DIR = os.path.join('logs', 'tables')
+
+
+# ---------------- General plotting functions ---------------- #
+def setup_matplotlib(custom_params=None) -> None:
     """Configure matplotlib with default or custom parameters.
 
     Parameters
@@ -39,31 +50,115 @@ def setup_matplotlib(custom_params=None):
     custom_params : dict, optional
         Additional or override parameters.
     """
+
     params = DEFAULT_FIGURE_PARAMS.copy()
+
     if custom_params:
         params.update(custom_params)
 
     plt.rcParams.update(params)
 
 
-def setup_grid(ax=None, major_linewidth=1, minor_linewidth=0.4):
-    """Set up grid styling consistently across plots.
+# ---------------- Exploratory analysis plotting functions ---------------- #
+def plot_signal(dataframe: pd.DataFrame, columns: list, output_dir: Path,
+                title: str | None = None, y_label: str | None = None, alpha: float = 1.0) -> None:
+    """Plot time series signals in a single figure.
 
     Parameters
     ----------
-    ax
-        Matplotlib axis (uses current axis if None).
-    major_linewidth : float
-        Width of major grid lines.
-    minor_linewidth : float
-        Width of minor grid lines.
+    dataframe : pd.DataFrame
+        Data from run.
+    columns : list of str
+        Which signals to plot.
+    output_dir : pathlib.Path
+        Directory to save the plot.
+    title : str
+        Plot title.
+    y_label : str
+        y-axis label.
+    alpha : float
+        Plot transparency.
     """
-    if ax is None:
-        ax = plt.gca()
 
-    ax.grid(which='major', axis='both', linewidth=major_linewidth)
-    ax.grid(which='minor', axis='both', linewidth=minor_linewidth)
-    ax.minorticks_on()
+    setup_matplotlib({'figure.figsize': [8, 3], 'font.size': 12})
+    fig, ax = plt.subplots(layout='constrained')
+    time = dataframe['Time'] - dataframe['Time'].min()
+
+    for col in columns:
+        ax.plot(time, dataframe[col], label=col, alpha=alpha)
+
+    if title is not None:
+        ax.title(title)
+
+    if y_label is not None:
+        ax.set_ylabel(y_label)
+
+    ax.set_xlabel('time [s]')
+    fig.legend(loc='outside upper right', ncol=len(columns))
+    figure_name = y_label.lower().split('[')[0].strip().replace(' ', '_') if y_label else 'signal_plot'
+    plt.savefig(output_dir / f'{figure_name}.png', dpi=DPI, bbox_inches="tight")
+    plt.close()
+
+
+def plot_many(dataframe: pd.DataFrame, columns: list, output_dir: Path,
+              y_label: str | None = None, alpha: float = 1.0) -> None:
+    """Plot time series signals in separate axes.
+
+    Parameters
+    ----------
+    dataframe : pd.DataFrame
+        Data from run.
+    columns : list of str
+        Which signals to plot.
+    output_dir : pathlib.Path
+        Directory to save the plot.
+    y_label : str
+        y-axis label.
+    alpha : float
+        Plot transparency.
+    """
+
+    setup_matplotlib({'figure.figsize': [8, 3]})
+    fig, axes = plt.subplots(2, 2, sharex=True, sharey=True)
+    time = dataframe['Time'] - dataframe['Time'].min()
+
+    for i, ax in enumerate(axes.flat):
+        col = columns[i]
+        ax.plot(time, dataframe[col], label=col, alpha=alpha)
+        ax.set_title(f"{col}")
+
+    if y_label is not None:
+        fig.supylabel(y_label)
+
+    fig.supxlabel('time [s]')
+    plt.tight_layout()
+    figure_name = y_label.lower().split('[')[0].strip().replace(' ', '_') if y_label else 'signal_plot'
+    plt.savefig(output_dir / f'{figure_name}.png', dpi=DPI, bbox_inches="tight")
+    plt.close()
+
+
+def plot_correlation(correlation_matrix: pd.DataFrame, output_dir: Path) -> None:
+    """Plot correlation matrix of dataframe features.
+
+    Parameters
+    ----------
+    dataframe : pd.DataFrame
+        Data from run.
+    output_dir : pathlib.Path
+        Directory to save the plot.
+    """
+
+    setup_matplotlib({'font.size': 8})
+    sns.heatmap(correlation_matrix,
+                vmin=-1,
+                vmax=1,
+                cmap="Blues",
+                annot=True,
+                linewidths=0.5,
+                fmt=".2f")
+    plt.xticks(rotation=45, ha='right')
+    plt.savefig(output_dir / 'corr_plot.png', dpi=DPI, bbox_inches="tight")
+    plt.close()
 
 
 def load_cv_results(filenames, results_dir):
@@ -297,79 +392,3 @@ def plot_tuning_results(model, classes, experiment_configurations, result_dir):
     plt.tight_layout()
     plt.savefig(output_path, dpi=DPI, bbox_inches="tight")
     plt.close()
-
-
-def plot_signal(dataframe, columns, title=None, y_label=None, alpha=1, output_dir=None):
-    """Plot time series signals in a single figure.
-
-    Parameters
-    ----------
-    dataframe : pd.DataFrame
-        Data from run.
-    columns : list of str
-        Which signals to plot.
-    title : str
-        Plot title.
-    y_label : str
-        y-axis label.
-    alpha : float
-        Plot transparency.
-    output_dir : Path
-        Directory to save the plot.
-    """
-    setup_matplotlib({'figure.figsize': [8, 3], 'font.size': 12})
-    fig, ax = plt.subplots(layout='constrained')
-    time = dataframe['Time'] - dataframe['Time'].min()
-    for col in columns:
-        ax.plot(
-            time,
-            dataframe[col],
-            label=col,
-            alpha=alpha,
-        )
-    if title:
-        ax.title(title)
-    ax.set_xlabel('time [s]')
-    if y_label:
-        ax.set_ylabel(y_label)
-    fig.legend(loc='outside upper right', ncol=len(columns))
-    plt.savefig(output_dir / f'{y_label[:10]}.png', dpi=DPI, bbox_inches="tight")
-    plt.show()
-
-
-def plot_many(dataframe, columns, y_label=None, alpha=1, output_dir=None):
-    """Plot time series signals in separate axes.
-
-    Parameters
-    ----------
-    dataframe : pd.DataFrame
-        Data from run.
-    columns : list of str
-        Which signals to plot.
-    y_label : str
-        y-axis label.
-    alpha : float
-        Plot transparency.
-    """
-    setup_matplotlib({'figure.figsize': [8, 3]})
-    fig, axes = plt.subplots(2, 2, sharex=True, sharey=True)
-
-    time = dataframe['Time'] - dataframe['Time'].min()
-
-    for i, ax in enumerate(axes.flat):
-        col = columns[i]
-
-        ax.plot(
-            time,
-            dataframe[col],
-            label=col,
-            alpha=alpha
-        )
-        ax.set_title(f"{col}")
-
-    fig.supxlabel('time [s]')
-    if y_label:
-        fig.supylabel(y_label)
-    plt.tight_layout()
-    plt.savefig(output_dir / f'{y_label[:10]}.png', dpi=DPI, bbox_inches="tight")
-    plt.show()
