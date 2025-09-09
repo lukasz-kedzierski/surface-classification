@@ -1,4 +1,7 @@
+"""Utility functions for data processing and feature extraction."""
+
 import random
+
 import numpy as np
 import pandas as pd
 import yaml
@@ -36,12 +39,12 @@ def sequence_run(dataframe, selected_columns, window_length, window_stride=1):
     return df_list
 
 
-def format_to_yaml(series):
+def format_to_yaml(series: pd.DataFrame) -> list:
     """Format string to yaml before unpacking.
 
     Parameters
     ----------
-    series : pandas.Series
+    series : pd.DataFrame
         Series containing string data to be formatted.
 
     Returns
@@ -49,6 +52,7 @@ def format_to_yaml(series):
     data : list of lists
         List of lists where each inner list contains formatted data from the series.
     """
+
     data = series.tolist()
     data = [line.replace(', ', '];[') for line in data]
     data = [line.replace('[', '') for line in data]
@@ -57,112 +61,125 @@ def format_to_yaml(series):
     return data
 
 
-def unpack_load_data(dataframe):
+def unpack_load_data(dataframe: pd.DataFrame) -> pd.DataFrame:
     """Unpack data containing servo load to separate columns.
 
     Parameters
     ----------
-    dataframe : pandas.DataFrame
+    dataframe : pd.DataFrame
         DataFrame containing column with servo load data.
 
     Returns
     -------
-    pandas.DataFrame
+    df : pd.DataFrame
         Dataframe with servo load columns for each wheel.
     """
+
     # Convert strings to readable format.
     data = format_to_yaml(dataframe['values'])
+
     # Load YAML data.
     data = [[yaml.safe_load(line) for line in separate_lines] for separate_lines in data]
-    cols = ['wheel_load.' + str(idx + 1) for idx in range(len(data[0]))]
+
+    # Prepare unpacked data.
     # Load is divided by 100 because it is a percentage value.
-    load = pd.DataFrame(
-        [[abs(dictionary['Amper']) / 100 for dictionary in line] for line in data],
-        columns=cols
-        )
+    transformed_data = [[abs(dictionary['Amper']) / 100 for dictionary in line] for line in data]
+    cols = ['wheel_load.' + str(idx + 1) for idx in range(len(data[0]))]
+    load = pd.DataFrame(transformed_data, columns=cols)
     df = pd.concat([dataframe, load], axis=1)
     df.drop(columns=['values'], inplace=True)
     return df
 
 
-def unpack_ang_vel_data(dataframe):
+def unpack_ang_vel_data(dataframe: pd.DataFrame) -> pd.DataFrame:
     """Unpack data containing wheel angular velocities to separate columns.
 
     Parameters
     ----------
-    dataframe : pandas.DataFrame
+    dataframe : pd.DataFrame
         DataFrame containing column with wheel angular velocity data.
 
     Returns
     -------
-    pandas.DataFrame
+    df : pd.DataFrame
         Dataframe with angular velocity columns for each wheel.
     """
+
     # Convert strings to readable format.
     data = format_to_yaml(dataframe['values'])
+
     # Load YAML data.
     data = [[yaml.safe_load(line) for line in separate_lines] for separate_lines in data]
+
+    # Prepare unpacked data.
+    transformed_data = [[abs(dictionary['AngVelocity']) for dictionary in line] for line in data]
     cols = ['wheel_angular_velocity.' + str(idx + 1) for idx in range(len(data[0]))]
-    ang_vel = pd.DataFrame(
-        [[abs(dictionary['AngVelocity']) for dictionary in line] for line in data],
-        columns=cols
-        )
+    ang_vel = pd.DataFrame(transformed_data, columns=cols)
     df = pd.concat([dataframe, ang_vel], axis=1)
     df.drop(columns=['values'], inplace=True)
     return df
 
 
-def interpolate_servo_data(dataframe, new_timesteps):
-    """Interpolate data.
+def interpolate_servo_data(dataframe: pd.DataFrame, new_timesteps: pd.Series) -> pd.DataFrame:
+    """Interpolate servo data to match IMU.
 
     Parameters
     ----------
-    dataframe : pandas DataFrame
-        Dataframe containing original samples. Requires 'Time' column as the first one.
-    new_timesteps : pandas.Series
+    dataframe : pd.DataFrame
+        Dataframe containing original servo data. Requires 'Time' column as the first one.
+    new_timesteps : pd.Series
         New timestamps for interpolation.
 
     Returns
     -------
-    resampled_dataframe : pandas.DataFrame
+    resampled_dataframe : pd.DataFrame
         DataFrame containing samples mapped to new timestamps.
     """
+
     resampled_dataframe = pd.DataFrame(new_timesteps, columns=['Time'])
     for col in dataframe.columns[1:]:
         resampled_dataframe[col] = np.interp(new_timesteps, dataframe['Time'], dataframe[col])
-
     return resampled_dataframe
 
 
-def calculate_mean_power(wheel_load_dataframe, wheel_velocity_dataframe, circular_indexing):
+def calculate_mean_power(wheel_load: pd.DataFrame,
+                         wheel_angular_velocity: pd.DataFrame,
+                         circular_indexing: bool) -> pd.DataFrame:
     """Calculate average power consumption for left and right side wheels based on index assignment.
 
     Parameters
     ----------
-    wheel_load_dataframe : pandas.DataFrame
+    wheel_load : pd.DataFrame
         Wheel load data from run.
-    wheel_velocity_dataframe : pandas.DataFrame
+    wheel_angular_velocity : pd.DataFrame
         Wheel angular velocity data from run.
     circular_indexing : bool
         Wheel indexing format.
 
     Returns
-    pandas.DataFrame
+    -------
+    df : pd.DataFrame
         Dataframe with average power consumption columns for each side.
     """
-    number_of_wheels = len(wheel_load_dataframe.columns)
+
+    number_of_wheels = len(wheel_load.columns)
     cols = ['estimated_power.' + str(idx + 1) for idx in range(number_of_wheels)]
-    df = pd.DataFrame(
-        wheel_load_dataframe.values * wheel_velocity_dataframe.values,
-        columns=cols,
-        index=wheel_load_dataframe.index
-        )
+    estimated_power = wheel_load.values * wheel_angular_velocity.values
+    df = pd.DataFrame(estimated_power, columns=cols, index=wheel_load.index)
+
+    # Properly assign wheels to left and right side.
     if circular_indexing:
-        cols_left = ['estimated_power.' + str(idx + 1) for idx in range(number_of_wheels) if idx in (0, 3)]
-        cols_right = ['estimated_power.' + str(idx + 1) for idx in range(number_of_wheels) if idx in (1, 2)]
+        cols_left = ['estimated_power.' + str(idx + 1) for idx in range(number_of_wheels)
+                     if idx in (0, 3)]
+        cols_right = ['estimated_power.' + str(idx + 1) for idx in range(number_of_wheels)
+                      if idx in (1, 2)]
     else:
-        cols_left = ['estimated_power.' + str(idx + 1) for idx in range(number_of_wheels) if idx % 2 == 0]
-        cols_right = ['estimated_power.' + str(idx + 1) for idx in range(number_of_wheels) if idx % 2 != 0]
+        cols_left = ['estimated_power.' + str(idx + 1) for idx in range(number_of_wheels)
+                     if idx % 2 == 0]
+        cols_right = ['estimated_power.' + str(idx + 1) for idx in range(number_of_wheels)
+                      if idx % 2 != 0]
+
+    # Calculate mean power for each side.
     power_left = df[cols_left]
     power_right = df[cols_right]
     df['mean_power_left'] = power_left.mean(axis=1)
@@ -283,7 +300,7 @@ def get_frequency_domain(sequence, freq_features):
     return np.array(engineered_freq_features).flatten()
 
 
-def generalize_classes(surface_classes):
+def generalize_classes(surface_classes: list) -> list:
     """Generalize surface classes.
 
     Parameters
