@@ -14,7 +14,7 @@ from utils.processing import (
     calculate_mean_power,
     generalize_classes,
 )
-from utils.training import load_config
+from utils.training import load_config, set_seed
 from utils.visualization import plot_signal, plot_many, plot_correlation, IMAGE_DIR, TABLE_DIR
 
 
@@ -166,6 +166,7 @@ def main():
     analysis_params = load_config(config_path)
     dataset_params = analysis_params['dataset_params']
     bag_path = Path(analysis_params['bag_path'])
+    set_seed(analysis_params['seed'])
 
     analyze_run(bag_path, args.output_dir)
     analyze_dataset(dataset_params, args.output_dir)
