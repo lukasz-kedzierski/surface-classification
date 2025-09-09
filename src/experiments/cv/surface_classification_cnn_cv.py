@@ -17,6 +17,7 @@ from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
 from models.models import CNNSurfaceClassifier
 from utils.datasets import CNNTrainingDataset
+from utils.processing import generalize_classes
 from utils.training import ProgressReporter, load_config, extract_experiment_name, set_seed, seed_worker, get_device, get_input_size, step
 
 
@@ -53,10 +54,7 @@ def cnn_cv(
 
     lb = LabelBinarizer()
     if dataset_params['generalized_classes']:
-        generalized_classes = [
-            'slippery' if label in ('3_Wykladzina_jasna', '4_Trawa')
-            else 'grippy' if label in ('5_Spienione_PCV', '8_Pusta_plyta', '9_podklady', '10_Mata_ukladana')
-            else 'neutral' for label in target_classes]
+        generalized_classes = generalize_classes(target_classes)
         lb.fit(generalized_classes)
         y = lb.transform(generalized_classes)
     else:

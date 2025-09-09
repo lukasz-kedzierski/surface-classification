@@ -15,6 +15,7 @@ from sklearn.preprocessing import LabelEncoder
 from torch.utils.data import DataLoader, Subset
 from xgboost import XGBClassifier
 from utils.datasets import XGBTrainingDataset
+from utils.processing import generalize_classes
 from utils.training import load_config, extract_experiment_name, set_seed, seed_worker, average_over_splits
 
 
@@ -51,10 +52,7 @@ def xgb_training(
 
     le = LabelEncoder()
     if dataset_params['generalized_classes']:
-        generalized_classes = [
-            'slippery' if label in ('3_Wykladzina_jasna', '4_Trawa')
-            else 'grippy' if label in ('5_Spienione_PCV', '8_Pusta_plyta', '9_podklady', '10_Mata_ukladana')
-            else 'neutral' for label in target_classes]
+        generalized_classes = generalize_classes(target_classes)
         le.fit(generalized_classes)
         y = le.transform(generalized_classes)
     else:
