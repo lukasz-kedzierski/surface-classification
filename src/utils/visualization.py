@@ -161,6 +161,49 @@ def plot_correlation(correlation_matrix: pd.DataFrame, output_dir: Path) -> None
     plt.close()
 
 
+def plot_odom_error(errors: pd.DataFrame, assigned_labels: list, image_path: Path) -> None:
+    """Plot odometry error results.
+
+    Parameters
+    ----------
+    errors : pd.DataFrame
+        Dataframe with odometry errors.
+    assigned_labels : list of int
+        List of assigned class labels.
+    image_path : pathlib.Path
+        Path to save the plot.
+    """
+
+    original_labels = ['laminate flooring',
+                       'short carpet',
+                       'long carpet',
+                       'artificial grass',
+                       'pcv foamboard',
+                       'linoleum',
+                       'ceramic tiles',
+                       'osb',
+                       'foam underlayment',
+                       'eva foam tiles']
+
+    setup_matplotlib()
+    sns.scatterplot(
+        x=original_labels,
+        y=errors,
+        hue=assigned_labels,
+        palette=[NICER_BLUE, NICER_GREEN, ORANGE],
+        s=40,
+    )
+    plt.xticks(rotation=45, horizontalalignment='right')
+    plt.yticks(ticks=np.arange(-6, 6, 3) / 10)
+    plt.ylim(-0.6, 0.3)
+    plt.xlabel('original labels')
+    plt.ylabel('scaled odometry error')
+    plt.grid()
+    plt.legend(loc='lower right')
+    plt.savefig(image_path, dpi=DPI, bbox_inches="tight")
+    plt.close()
+
+
 def load_cv_results(filenames, results_dir):
     """Load CV results from JSON files.
 

@@ -1,60 +1,66 @@
+"""Script to plot odometry error results from an .ods file."""
+
+import argparse
 from pathlib import Path
-import matplotlib.pyplot as plt
-import numpy as np
+
 import pandas as pd
-import seaborn as sns
+from sklearn.preprocessing import LabelEncoder
 
-# set figure params
-nicer_green = '#159C48'
-nicer_blue = '#00A0FF'
-orange = '#FBBC04'
+from utils.processing import generalize_classes
+from utils.visualization import plot_odom_error, IMAGE_DIR
 
-plt.rcParams['figure.figsize'] = [4, 3]
-plt.rcParams['font.size'] = 10
 
-# read file
-errors = pd.read_excel(
-    Path("results/odom_error.ods"),
-    sheet_name=None,
-    header=None,
-    names=['surface', 'error'],
-    engine="odf",
-)
+def plot_error(data: pd.DataFrame, image_path: Path) -> None:
+    """Plot odometry error results from an .ods file.
 
-original_classes = errors['4W']['surface']
-fixed_classes = [
-    'laminate flooring',
-    'short carpet',
-    'long carpet',
-    'artificial grass',
-    'pcv foamboard',
-    'linoleum',
-    'ceramic tiles',
-    'osb',
-    'foam underlayment',
-    'eva foam tiles',
-]
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Data read from the .ods file.
+    image_path : pathlib.Path
+        Path to save the output image.
+    """
 
-assigned_labels = [0 if label in ('3_Wykladzina_jasna', '4_Trawa')
-                   else 2 if label in ('5_Spienione_PCV', '8_Pusta_plyta', '9_podklady', '10_Mata_ukladana')
-                   else 1 for label in original_classes]
+    # Process data.
+    error_data = data['error']
+    target_classes = data['surface']
+    lb = LabelEncoder()
+    generalized_classes = generalize_classes(target_classes)
+    lb.fit(generalized_classes)
+    assigned_labels = lb.transform(generalized_classes)
 
-output_dir = Path('results/figures')
+    # Plot odometry error.
+    plot_odom_error(error_data, assigned_labels, image_path)
 
-# plot results
-colors = [nicer_blue if label == 0 else nicer_green if label == 1 else orange for label in assigned_labels]
-scatter = sns.scatterplot(
-    x=fixed_classes,
-    y=errors['4W']['error'],
-    hue=assigned_labels,
-    palette=[nicer_blue, nicer_green, orange],
-    s=40,
-)
-plt.xticks(rotation=45, horizontalalignment='right')
-plt.yticks(ticks=np.arange(-6, 6, 3) / 10)
-plt.ylim(-0.6, 0.3)
-plt.xlabel('original labels')
-plt.ylabel('scaled odometry error')
-plt.grid()
-plt.legend(loc='lower right')
-plt.savefig(output_dir / 'odom_error_4W.png', dpi=1000, bbox_inches="tight")
+
+def main():
+    """Main script for plotting odometry errors."""
+
+    parser = argparse.ArgumentParser(description="Dataset Analysis for Surface Classification")
+    parser.add_argument(
+        '--output-dir',
+        default='results',
+        type=Path,
+        help="Output directory path."
+    )
+    args = parser.parse_args()
+
+    # Set up paths.
+    image_dir = args.output_dir.joinpath(IMAGE_DIR)
+    image_dir.mkdir(parents=True, exist_ok=True)
+
+    # Read data.
+    data_path = Path('data/odom_error.ods')
+    data = pd.read_excel(data_path,
+                         sheet_name=None,
+                         header=None,
+                         names=['surface', 'error'],
+                         engine="odf")
+
+    for kinematics in ['4W', '6W']:
+        image_path = image_dir.joinpath(f'odom_error_{kinematics}.png'.lower())
+        plot_error(data[kinematics], image_path)
+
+
+if __name__ == "__main__":
+    main()
