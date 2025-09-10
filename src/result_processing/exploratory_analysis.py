@@ -99,6 +99,7 @@ def analyze_dataset(dataset_params: dict, output_dir: Path) -> None:
     # Load dataset.
     with open(labels_file, encoding='utf-8') as fp:
         labels = json.load(fp)
+
     dataset = [(data_dir.joinpath(f'{key}.csv'), values['surface'])
                for key, values in labels.items()]
     filenames = [run[0] for run in dataset]
@@ -148,18 +149,14 @@ def main():
     """Main script for dataset analysis."""
 
     parser = argparse.ArgumentParser(description='Dataset Analysis for Surface Classification')
-    parser.add_argument(
-        '--config-file',
-        default='exploratory_analysis.yaml',
-        type=str,
-        help='YAML configuration file path.'
-    )
-    parser.add_argument(
-        '--output-dir',
-        default='results',
-        type=Path,
-        help='Output directory path.'
-    )
+    parser.add_argument('--config-file',
+                        default='exploratory_analysis.yaml',
+                        type=str,
+                        help='YAML configuration file path.')
+    parser.add_argument('--output-dir',
+                        default='results',
+                        type=Path,
+                        help='Output directory path.')
     args = parser.parse_args()
 
     config_path = Path('configs').joinpath(args.config_file)

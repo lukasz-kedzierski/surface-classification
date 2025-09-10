@@ -39,12 +39,10 @@ def main():
     parser = argparse.ArgumentParser(
         description='Odometry Errors Analysis for Surface Classification'
     )
-    parser.add_argument(
-        '--output-dir',
-        default='results',
-        type=Path,
-        help='Output directory path.'
-    )
+    parser.add_argument('--output-dir',
+                        default='results',
+                        type=Path,
+                        help='Output directory path.')
     args = parser.parse_args()
 
     # Set up directories.

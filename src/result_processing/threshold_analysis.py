@@ -100,7 +100,7 @@ def xgb_threshold_analysis(experiment_name: str,
     sss = StratifiedShuffleSplit(test_size=0.2)
 
     for (training_index, test_index) in sss.split(x, y):
-        # Initialize the model in each split
+        # Initialize the model in each split.
         xgb_model = XGBClassifier(objective='multi:softprob', num_class=num_classes)
 
         train_subset = Subset(cv_data, training_index)
