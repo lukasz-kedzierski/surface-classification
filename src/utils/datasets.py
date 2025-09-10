@@ -1,11 +1,14 @@
 """Module for datasets used in training and inference of surface prediction models."""
 
 from abc import ABC, abstractmethod
+
 import numpy as np
 import pandas as pd
 import torch
 from torch.utils.data import Dataset
+
 from utils.processing import get_sample_features, sample_sequence, sequence_run
+from utils.training import WINDOW_LENGTH
 
 
 class BaseDataset(Dataset, ABC):
@@ -14,7 +17,8 @@ class BaseDataset(Dataset, ABC):
     This class initializes the dataset parameters such as frequency, sampling rate, lookback period,
     stride, and window length. It also defines the modalities to be used in the dataset.
     """
-    def __init__(self, data_frequency=100.0, window_length=200, subset=None):
+    def __init__(self, data_frequency: float = 100.0,
+                 window_length: int = 200, subset: list | None = None) -> None:
         """
         Parameters
         ----------
@@ -30,6 +34,7 @@ class BaseDataset(Dataset, ABC):
         selected_modalities : list of str
             List of selected modalities based on the subset.
         """
+
         self.data_frequency = data_frequency
         self.window_length = window_length
 
@@ -57,42 +62,38 @@ class BaseDataset(Dataset, ABC):
             self.selected_modalities.extend(modalities[source])
 
     @abstractmethod
-    def __len__(self):
+    def __len__(self) -> int:
         return 0
 
     @abstractmethod
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int):
         raise IndexError
 
 
 class CNNTrainingDataset(BaseDataset):
     """Dataset for training CNN."""
-    def __init__(
-            self,
-            runs,
-            labels,
-            data_frequency=100.0,
-            window_length=200,
-            subset=None
-            ):
+    def __init__(self, runs: list | np.ndarray,
+                 labels: np.ndarray, data_frequency: float = 100.0,
+                 window_length: int = WINDOW_LENGTH, subset: list | None = None) -> None:
         """
         Parameters
         ----------
-        runs : list or ndarray of str
+        runs : list of str or np.ndarray of str
             List or array of time series file names.
-        labels : ndarray of str
+        labels : np.ndarray
             ndarray of one-hot encoded surface labels.
         """
+
         super().__init__(data_frequency, window_length, subset)
 
         self.runs = runs
         self.labels = labels
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Returns the number of runs in the dataset."""
         return len(self.runs)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> tuple:
         """Retrieves a single, windowed time series from dataset."""
 
         run = self.runs[idx]
@@ -109,16 +110,10 @@ class XGBTrainingDataset(CNNTrainingDataset):
 
     It extends CNNTrainingDataset and includes engineered features for the XGBoost models.
     """
-    def __init__(
-            self,
-            runs,
-            labels,
-            data_frequency=100.0,
-            window_length=200,
-            subset=None,
-            time_features=None,
-            freq_features=None
-            ):
+    def __init__(self, runs: list | np.ndarray,
+                 labels: np.ndarray, data_frequency: float = 100.0,
+                 window_length: int = WINDOW_LENGTH, subset: list | None = None,
+                 time_features: list | None = None, freq_features: list | None = None) -> None:
         """
         Parameters
         ----------
@@ -127,14 +122,16 @@ class XGBTrainingDataset(CNNTrainingDataset):
         freq_features : list of str, optional
             List of frequency domain features to be extracted from the time series.
         """
+
         super().__init__(runs, labels, data_frequency, window_length, subset)
 
         self.time_features = time_features
         self.freq_features = freq_features
 
     @property
-    def engineered_features(self):
+    def engineered_features(self) -> np.ndarray:
         """Returns the list of engineered features (dataframe column names) for XGBoost."""
+
         t_features = [channel + '_t_' + feature
                       for feature in self.time_features
                       for channel in self.selected_modalities]
@@ -143,7 +140,7 @@ class XGBTrainingDataset(CNNTrainingDataset):
                       for channel in self.selected_modalities]
         return np.array(t_features + f_features)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> tuple:
         """Overrides __getitem__ to return engineered features for XGBoost."""
 
         run = self.runs[idx]
@@ -158,34 +155,27 @@ class XGBTrainingDataset(CNNTrainingDataset):
 
 class InferenceDataset(BaseDataset):
     """Dataset for CNN inference on a single recorded run."""
-    def __init__(
-            self,
-            run,
-            data_frequency=100.0,
-            sampling_rate=None,
-            lookback_period=1.0,
-            subset=None
-            ):
+    def __init__(self,
+                 run: str,
+                 data_frequency: float = 100.0,
+                 window_length: int = WINDOW_LENGTH,
+                 subset: list | None = None) -> None:
         """
         Parameters
         ----------
         run : str
             Time series file name.
         """
-        super().__init__(data_frequency, sampling_rate, lookback_period, subset)
+
+        super().__init__(data_frequency, window_length, subset)
 
         self.run = pd.read_csv(run, index_col=[0]).drop(labels='Time', axis=1)
-        self.windows = sequence_run(
-            self.run,
-            self.selected_modalities,
-            self.window_length,
-            self.stride
-            )
+        self.windows = sequence_run(self.run, self.selected_modalities, self.window_length)
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Returns the number of windows retrieved from a run."""
         return len(self.windows)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> torch.Tensor:
         """Retrieves a single, windowed time series from dataset."""
         return torch.tensor(self.windows[idx], dtype=torch.float)

@@ -1,4 +1,5 @@
-"""Module with helper objects used in training and inference of surface prediction models."""
+"""Helper objects used in training and inference of surface prediction models."""
+
 import json
 import random
 import subprocess
@@ -30,7 +31,7 @@ PARAM_GRID = {'n_estimators': [100, 200, 300],
 
 class EarlyStopper:
     """Helper class for early stopping during training of neural networks."""
-    def __init__(self, patience=10, min_delta=1e-5):
+    def __init__(self, patience: int = 10, min_delta: float = 1e-5) -> None:
         """
         Parameters
         ----------
@@ -51,7 +52,7 @@ class EarlyStopper:
         self.counter = 0
         self.min_validation_loss = float('inf')
 
-    def early_stop(self, validation_loss):
+    def early_stop(self, validation_loss: float) -> bool:
         """Check if training should be stopped based on validation loss.
 
         Parameters
@@ -64,6 +65,7 @@ class EarlyStopper:
         bool
             True if training should be stopped, False otherwise.
         """
+
         if validation_loss < (self.min_validation_loss - self.min_delta):
             self.min_validation_loss = validation_loss
             self.counter = 0
@@ -240,7 +242,7 @@ class ProgressTracker:
             time.sleep(0.5)  # Update every 500ms
 
 
-def load_config(config_path):
+def load_config(config_path: Path) -> dict:
     """Load configuration from YAML file.
 
     Parameters
@@ -253,12 +255,13 @@ def load_config(config_path):
     config : dict
         Configuration parameters as a dictionary.
     """
+
     with open(config_path, 'r', encoding='utf-8') as f:
         config = yaml.safe_load(f)
     return config
 
 
-def extract_experiment_name(experiment_params):
+def extract_experiment_name(experiment_params: dict) -> str:
     """Extract a unique name for the experiment based on its parameters.
 
     Parameters
@@ -271,10 +274,10 @@ def extract_experiment_name(experiment_params):
     str
         Unique experiment name.
     """
-    return '_'.join(experiment_params['kinematics'] + experiment_params['channels'])
+    return '_'.join(experiment_params['kinematics'] + experiment_params['channels']).lower()
 
 
-def set_seed(seed):
+def set_seed(seed: int) -> torch.Generator:
     """Set random seed for reproducibility.
 
     Parameters
@@ -287,6 +290,7 @@ def set_seed(seed):
     generator : torch.Generator
         A torch Generator object initialized with the given seed.
     """
+
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -297,14 +301,15 @@ def set_seed(seed):
     return generator
 
 
-def seed_worker(worker_id):
+def seed_worker(worker_id) -> None:
     """Set the seed for worker processes to ensure reproducibility."""
+
     worker_seed = torch.initial_seed() % 2**32
     np.random.seed(worker_seed)
     random.seed(worker_seed)
 
 
-def get_device():
+def get_device() -> torch.device:
     """Get the device to run the model on.
 
     Returns
@@ -312,10 +317,10 @@ def get_device():
     torch.device
         The device to use for computations (CPU or GPU).
     """
-    return "cuda:0" if torch.cuda.is_available() else "cpu"
+    return 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
 
-def get_input_size(channels):
+def get_input_size(channels: list) -> int:
     """Get the input size based on the subset of modalities.
 
     Parameters
@@ -328,26 +333,32 @@ def get_input_size(channels):
     int
         The total input size based on the selected modalities.
     """
+
     if channels is None:
         return 0
+
     size_map = {'imu': 6, 'servo': 2}
     return sum(size_map[input] for input in channels)
 
 
-def run_training_instance(script_path, config, experiment_name, output_dir, progress_dir=None):
+def run_training_instance(script_path: Path,
+                          config: str,
+                          experiment_name: str,
+                          output_dir: Path,
+                          progress_dir: Path | None = None) -> dict:
     """Run a single training instance with the given configuration.
 
     Parameters
     ----------
-    script_path : Path
+    script_path : pathlib.Path
         Path to the training script to execute.
     config : str
         Configuration file name.
     experiment_name : str
         Name of the experiment.
-    output_dir : Path
+    output_dir : pathlib.Path
         Directory to save the output results.
-    progress_dir : Path, optional
+    progress_dir : pathlib.Path, optional
         Directory to save progress files for monitoring.
 
     Returns
@@ -365,6 +376,7 @@ def run_training_instance(script_path, config, experiment_name, output_dir, prog
            experiment_name,
            '--output-dir',
            output_dir]
+
     if progress_dir is not None:
         cmd += ['--progress-dir', progress_dir]
 
@@ -379,7 +391,9 @@ def run_training_instance(script_path, config, experiment_name, output_dir, prog
     }
 
 
-def step(model, batch, criterion, device, train=False, optimizer=None):
+def step(model: torch.nn.Module, batch: tuple,
+         criterion: torch.nn.Module, device: torch.device,
+         train: bool = False, optimizer: torch.optim.Optimizer | None = None) -> tuple:
     """Perform a single training or validation step.
 
     Parameters
@@ -402,6 +416,7 @@ def step(model, batch, criterion, device, train=False, optimizer=None):
     tuple
         Loss value and model outputs.
     """
+
     batch_x, batch_y = batch
     batch_x, batch_y = batch_x.to(device), batch_y.to(device)
     batch_x = batch_x.permute(0, 2, 1)
@@ -417,7 +432,7 @@ def step(model, batch, criterion, device, train=False, optimizer=None):
     return loss, outputs
 
 
-def average_over_splits(results, filename, output_dir):
+def average_over_splits(results: dict, filename: str, output_dir: Path) -> None:
     """Averages tuning classification reports over splits.
 
     Parameters
@@ -426,12 +441,16 @@ def average_over_splits(results, filename, output_dir):
         Dictionary containing classification reports for each split.
     filename : str
         Base filename for saving the averaged reports.
-    output_dir : Path
+    output_dir : pathlib.Path
         Directory to save the output JSON files.
     """
+
     # Update classification reports.
     for result_dict in results.values():
-        result_dict.update({"accuracy": {"precision": None, "recall": None, "f1-score": result_dict["accuracy"], "support": result_dict['macro avg']['support']}})
+        result_dict.update({'accuracy': {'precision': None,
+                                         'recall': None,
+                                         'f1-score': result_dict['accuracy'],
+                                         'support': result_dict['macro avg']['support']}})
 
     # Load reports to DataFrames.
     reports = [pd.DataFrame(result_dict).transpose() for result_dict in results.values()]
@@ -443,5 +462,5 @@ def average_over_splits(results, filename, output_dir):
     df_ci.iloc[:, :3] = T_95 * result_arrays.std(axis=0) / np.sqrt(len(reports))
 
     # Dump statistics to JSON files.
-    df_mean.to_json(path_or_buf=output_dir / f'{filename}_mean.json', orient='index')
-    df_ci.to_json(path_or_buf=output_dir / f'{filename}_ci.json', orient='index')
+    df_mean.to_json(path_or_buf=output_dir.joinpath(f'{filename}_mean.json'), orient='index')
+    df_ci.to_json(path_or_buf=output_dir.joinpath(f'{filename}_ci.json'), orient='index')

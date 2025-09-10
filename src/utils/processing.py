@@ -54,7 +54,7 @@ def unpack_load_data(dataframe: pd.DataFrame) -> pd.DataFrame:
     # Prepare unpacked data.
     # Load is divided by 100 because it is a percentage value.
     transformed_data = [[abs(dictionary['Amper']) / 100 for dictionary in line] for line in data]
-    cols = ['wheel_load.' + str(idx + 1) for idx in range(len(data[0]))]
+    cols = [''.join(('wheel_load.', str(idx+1))) for idx in range(len(data[0]))]
     load = pd.DataFrame(transformed_data, columns=cols)
     df = pd.concat([dataframe, load], axis=1)
     df.drop(columns=['values'], inplace=True)
@@ -83,7 +83,7 @@ def unpack_ang_vel_data(dataframe: pd.DataFrame) -> pd.DataFrame:
 
     # Prepare unpacked data.
     transformed_data = [[abs(dictionary['AngVelocity']) for dictionary in line] for line in data]
-    cols = ['wheel_angular_velocity.' + str(idx + 1) for idx in range(len(data[0]))]
+    cols = [''.join(('wheel_angular_velocity.', str(idx+1))) for idx in range(len(data[0]))]
     ang_vel = pd.DataFrame(transformed_data, columns=cols)
     df = pd.concat([dataframe, ang_vel], axis=1)
     df.drop(columns=['values'], inplace=True)
@@ -133,20 +133,20 @@ def calculate_mean_power(wheel_load: pd.DataFrame,
     """
 
     number_of_wheels = len(wheel_load.columns)
-    cols = ['estimated_power.' + str(idx + 1) for idx in range(number_of_wheels)]
+    cols = [''.join(('estimated_power.', str(idx+1))) for idx in range(number_of_wheels)]
     estimated_power = wheel_load.values * wheel_angular_velocity.values
     df = pd.DataFrame(estimated_power, columns=cols, index=wheel_load.index)
 
     # Properly assign wheels to left and right side.
     if circular_indexing:
-        cols_left = ['estimated_power.' + str(idx + 1) for idx in range(number_of_wheels)
+        cols_left = [''.join(('estimated_power.', str(idx+1))) for idx in range(number_of_wheels)
                      if idx in (0, 3)]
-        cols_right = ['estimated_power.' + str(idx + 1) for idx in range(number_of_wheels)
+        cols_right = [''.join(('estimated_power.', str(idx+1))) for idx in range(number_of_wheels)
                       if idx in (1, 2)]
     else:
-        cols_left = ['estimated_power.' + str(idx + 1) for idx in range(number_of_wheels)
+        cols_left = [''.join(('estimated_power.', str(idx+1))) for idx in range(number_of_wheels)
                      if idx % 2 == 0]
-        cols_right = ['estimated_power.' + str(idx + 1) for idx in range(number_of_wheels)
+        cols_right = [''.join(('estimated_power.', str(idx+1))) for idx in range(number_of_wheels)
                       if idx % 2 != 0]
 
     # Calculate mean power for each side.
@@ -179,7 +179,8 @@ def sample_sequence(dataframe: pd.DataFrame,
     """
 
     df = dataframe[selected_columns]
-    init_timestep = random.randint(0, (len(dataframe) - 1) - window_length)
+    max_start_index = len(dataframe) - window_length - 1
+    init_timestep = random.randint(0, max_start_index)
     return df.iloc[init_timestep:init_timestep + window_length].to_numpy()
 
 
@@ -233,7 +234,7 @@ def get_sample_features(sequence: np.ndarray,
     """
 
     if time_features is None and freq_features is None:
-        raise ValueError("At least one of time_features or freq_features must be provided.")
+        raise ValueError('At least one of time_features or freq_features must be provided.')
 
     engineered_features = []
     if time_features is not None:
