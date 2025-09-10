@@ -314,6 +314,6 @@ def generalize_classes(surface_classes: list) -> list:
         List of generalized surface classes.
     """
     return ['group_0' if label in ('3_Wykladzina_jasna', '4_Trawa')
-            else 'group_1' if label in ('5_Spienione_PCV', '8_Pusta_plyta',
+            else 'group_2' if label in ('5_Spienione_PCV', '8_Pusta_plyta',
                                         '9_podklady', '10_Mata_ukladana')
-            else 'group_2' for label in surface_classes]
+            else 'group_1' for label in surface_classes]

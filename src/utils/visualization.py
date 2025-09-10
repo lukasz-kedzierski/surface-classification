@@ -161,12 +161,12 @@ def plot_correlation(correlation_matrix: pd.DataFrame, output_dir: Path) -> None
     plt.close()
 
 
-def plot_odom_error(errors: pd.DataFrame, assigned_labels: list, image_path: Path) -> None:
+def plot_odom_error(odometry_errors: pd.DataFrame, assigned_labels: list, image_path: Path) -> None:
     """Plot odometry error results.
 
     Parameters
     ----------
-    errors : pd.DataFrame
+    odometry_errors : pd.DataFrame
         Dataframe with odometry errors.
     assigned_labels : list of int
         List of assigned class labels.
@@ -188,7 +188,7 @@ def plot_odom_error(errors: pd.DataFrame, assigned_labels: list, image_path: Pat
     setup_matplotlib()
     sns.scatterplot(
         x=original_labels,
-        y=errors,
+        y=odometry_errors,
         hue=assigned_labels,
         palette=[NICER_BLUE, NICER_GREEN, ORANGE],
         s=40,
