@@ -8,74 +8,22 @@ import yaml
 from scipy import stats
 
 
-def sample_sequence(dataframe: pd.DataFrame,
-                    selected_columns: list,
-                    window_length: int) -> np.ndarray:
-    """Draw random windowed sample from run.
-
-    Parameters
-    ----------
-    dataframe : pd.DataFrame
-        Data from run.
-    selected_columns : list
-        Subset of columns representing chosen signal channels.
-    window_length : int
-        Number of time steps in window.
-
-    Returns
-    -------
-    np.ndarray
-        Array containing selected channels and time steps.
-    """
-
-    df = dataframe[selected_columns]
-    init_timestep = random.randint(0, (len(dataframe) - 1) - window_length)
-    return df.iloc[init_timestep:init_timestep + window_length].to_numpy()
-
-
-def sequence_run(dataframe: pd.DataFrame, selected_columns: list,
-                 window_length: int, window_stride: int = 1) -> list:
-    """Convert dataframe to list of windows.
-
-    Parameters
-    ----------
-    dataframe : pd.DataFrame
-        Data from run.
-    selected_columns : list
-        Subset of columns representing chosen signal channels.
-    window_length : int
-        Number of time steps in window.
-    window_stride : int
-        How many time steps to omit from original data between windows.
-
-    Returns
-    -------
-    df_list : list of pd.DataFrame
-        List of dataframes containing selected channels and time steps.
-    """
-
-    df = dataframe[selected_columns]
-    num_of_windows = len(dataframe) - window_length + window_stride
-    df_list = [df.iloc[init_timestep:init_timestep + window_length].to_numpy()
-               for init_timestep in range(0, num_of_windows, window_stride)]
-    return df_list
-
-
-def format_to_yaml(series: pd.DataFrame) -> list:
+# ---------------- Bag processing functions ---------------- #
+def format_to_yaml(column: pd.DataFrame) -> list:
     """Format string to yaml before unpacking.
 
     Parameters
     ----------
-    series : pd.DataFrame
+    column : pd.DataFrame
         Series containing string data to be formatted.
 
     Returns
     -------
     data : list of lists
-        List of lists where each inner list contains formatted data from the series.
+        List of lists where each inner list contains formatted data from the column.
     """
 
-    data = series.tolist()
+    data = column.tolist()
     data = [line.replace(', ', '];[') for line in data]
     data = [line.replace('[', '') for line in data]
     data = [line.replace(']', '') for line in data]
@@ -209,6 +157,61 @@ def calculate_mean_power(wheel_load: pd.DataFrame,
     return df
 
 
+# ---------------- Dataset sampling functions ---------------- #
+def sample_sequence(dataframe: pd.DataFrame,
+                    selected_columns: list,
+                    window_length: int) -> np.ndarray:
+    """Draw random windowed sample from run.
+
+    Parameters
+    ----------
+    dataframe : pd.DataFrame
+        Data from run.
+    selected_columns : list
+        Subset of columns representing chosen signal channels.
+    window_length : int
+        Number of time steps in window.
+
+    Returns
+    -------
+    np.ndarray
+        Array containing selected channels and time steps.
+    """
+
+    df = dataframe[selected_columns]
+    init_timestep = random.randint(0, (len(dataframe) - 1) - window_length)
+    return df.iloc[init_timestep:init_timestep + window_length].to_numpy()
+
+
+def sequence_run(dataframe: pd.DataFrame, selected_columns: list,
+                 window_length: int, window_stride: int = 1) -> list:
+    """Convert dataframe to list of windows.
+
+    Parameters
+    ----------
+    dataframe : pd.DataFrame
+        Data from run.
+    selected_columns : list
+        Subset of columns representing chosen signal channels.
+    window_length : int
+        Number of time steps in window.
+    window_stride : int
+        How many time steps to omit from original data between windows.
+
+    Returns
+    -------
+    df_list : list of np.ndarray
+        List of dataframes containing selected channels and time steps.
+    """
+
+    df = dataframe[selected_columns]
+    num_of_windows = len(dataframe) - window_length + window_stride
+    df_list = [df.iloc[init_timestep:init_timestep + window_length].to_numpy()
+               for init_timestep in range(0, num_of_windows, window_stride)]
+    return df_list
+
+
+# ---------------- XGBoost specific functions ---------------- #
 def get_sample_features(sequence: np.ndarray,
                         time_features: list | None = None,
                         freq_features: list | None = None) -> np.ndarray:
@@ -327,6 +330,7 @@ def get_frequency_domain(sequence: np.ndarray, freq_features: list) -> np.ndarra
     return np.array(engineered_freq_features).flatten()
 
 
+# ---------------- General processing functions ---------------- #
 def generalize_classes(surface_classes: list) -> list:
     """Generalize surface classes.
 
