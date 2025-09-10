@@ -131,7 +131,7 @@ def analyze_dataset(dataset_params: dict, output_dir: Path) -> None:
     y = final_df['target']
 
     # Calculate mutual information score between features and target.
-    print('\nComputing mutual information score...')
+    print("\nComputing mutual information score...")
     mutual_information_score = mutual_info_classif(x.drop(columns=['Time']), y)
     mutual_information_df = pd.DataFrame(mutual_information_score.reshape(1, -1),
                                          columns=x.columns[1:],
@@ -139,26 +139,26 @@ def analyze_dataset(dataset_params: dict, output_dir: Path) -> None:
     mutual_information_df.to_json(table_dir / 'mutual_information.json')
 
     # Calculate and plot feature correlation matrix.
-    print('\nComputing correlation matrix...')
+    print("\nComputing correlation matrix...")
     correlation_matrix = x.drop(columns=['Time']).corr()
-    plot_correlation(correlation_matrix, output_dir=image_dir)
+    plot_correlation(correlation_matrix, image_dir)
 
 
 def main():
     """Main script for dataset analysis."""
 
-    parser = argparse.ArgumentParser(description="Dataset Analysis for Surface Classification")
+    parser = argparse.ArgumentParser(description='Dataset Analysis for Surface Classification')
     parser.add_argument(
         '--config-file',
         default='exploratory_analysis.yaml',
         type=str,
-        help="YAML configuration file path."
+        help='YAML configuration file path.'
     )
     parser.add_argument(
         '--output-dir',
         default='results',
         type=Path,
-        help="Output directory path."
+        help='Output directory path.'
     )
     args = parser.parse_args()
 
