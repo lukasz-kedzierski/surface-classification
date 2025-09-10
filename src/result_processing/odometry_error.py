@@ -10,7 +10,7 @@ from utils.processing import generalize_classes
 from utils.visualization import plot_odom_error, IMAGE_DIR
 
 
-def plot_error(data: pd.DataFrame, image_path: Path) -> None:
+def plot_errors(data: pd.DataFrame, image_path: Path) -> None:
     """Plot odometry error results from an .ods file.
 
     Parameters
@@ -24,10 +24,10 @@ def plot_error(data: pd.DataFrame, image_path: Path) -> None:
     # Process data.
     error_data = data['error']
     target_classes = data['surface']
-    lb = LabelEncoder()
+    le = LabelEncoder()
     generalized_classes = generalize_classes(target_classes)
-    lb.fit(generalized_classes)
-    assigned_labels = lb.transform(generalized_classes)
+    le.fit(generalized_classes)
+    assigned_labels = le.transform(generalized_classes)
 
     # Plot odometry error.
     plot_odom_error(error_data, assigned_labels, image_path)
@@ -36,16 +36,18 @@ def plot_error(data: pd.DataFrame, image_path: Path) -> None:
 def main():
     """Main script for plotting odometry errors."""
 
-    parser = argparse.ArgumentParser(description="Dataset Analysis for Surface Classification")
+    parser = argparse.ArgumentParser(
+        description='Odometry Errors Analysis for Surface Classification'
+    )
     parser.add_argument(
         '--output-dir',
         default='results',
         type=Path,
-        help="Output directory path."
+        help='Output directory path.'
     )
     args = parser.parse_args()
 
-    # Set up paths.
+    # Set up directories.
     image_dir = args.output_dir.joinpath(IMAGE_DIR)
     image_dir.mkdir(parents=True, exist_ok=True)
 
@@ -55,11 +57,12 @@ def main():
                          sheet_name=None,
                          header=None,
                          names=['surface', 'error'],
-                         engine="odf")
+                         engine='odf')
 
     for kinematics in ['4W', '6W']:
-        image_path = image_dir.joinpath(f'odom_error_{kinematics}.png'.lower())
-        plot_error(data[kinematics], image_path)
+        filename = f'odom_error_{kinematics}.png'.lower()
+        image_path = image_dir.joinpath(filename)
+        plot_errors(data[kinematics], image_path)
 
 
 if __name__ == "__main__":
