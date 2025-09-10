@@ -32,8 +32,9 @@ DEFAULT_FIGURE_PARAMS = {
 DPI = 1000
 
 
-# Statistical constants
+# Experiment constants
 T_95 = 2.228  # t-value for 95% confidence interval
+THRESHOLDS = [0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05]
 
 
 # Directories
@@ -96,7 +97,7 @@ def plot_signal(dataframe: pd.DataFrame, columns: list, output_dir: Path,
     ax.set_xlabel('time [s]')
     fig.legend(loc='outside upper right', ncol=len(columns))
     figure_name = y_label.lower().split('[')[0].strip().replace(' ', '_') if y_label else 'signal_plot'
-    plt.savefig(output_dir / f'{figure_name}.png', dpi=DPI, bbox_inches="tight")
+    plt.savefig(output_dir.joinpath(f'{figure_name}.png'), dpi=DPI, bbox_inches="tight")
     plt.close()
 
 
@@ -133,7 +134,7 @@ def plot_many(dataframe: pd.DataFrame, columns: list, output_dir: Path,
     fig.supxlabel('time [s]')
     plt.tight_layout()
     figure_name = y_label.lower().split('[')[0].strip().replace(' ', '_') if y_label else 'signal_plot'
-    plt.savefig(output_dir / f'{figure_name}.png', dpi=DPI, bbox_inches="tight")
+    plt.savefig(output_dir.joinpath(f'{figure_name}.png'), dpi=DPI, bbox_inches="tight")
     plt.close()
 
 
@@ -157,7 +158,7 @@ def plot_correlation(correlation_matrix: pd.DataFrame, output_dir: Path) -> None
                 linewidths=0.5,
                 fmt=".2f")
     plt.xticks(rotation=45, ha='right')
-    plt.savefig(output_dir / 'corr_plot.png', dpi=DPI, bbox_inches="tight")
+    plt.savefig(output_dir.joinpath('corr_plot.png'), dpi=DPI, bbox_inches="tight")
     plt.close()
 
 
@@ -201,6 +202,43 @@ def plot_odom_error(odometry_errors: pd.DataFrame, assigned_labels: list, image_
     plt.grid()
     plt.legend(loc='lower right')
     plt.savefig(image_path, dpi=DPI, bbox_inches="tight")
+    plt.close()
+
+
+def plot_threshold_analysis(threshold_data_path: Path, output_dir: Path) -> None:
+    """Plot threshold analysis results.
+
+    Parameters
+    ----------
+    threshold_data_path : pathlib.Path
+        Path to the JSON file with threshold analysis results.
+    output_dir : pathlib.Path
+        Directory to save the plot.
+    """
+
+    with open(threshold_data_path, 'r', encoding='utf-8') as f:
+        threshold_history = json.load(f)
+
+    # Calculate average F1-scores and standard deviations
+    average_f1 = []
+    ci_f1 = []
+
+    for threshold in THRESHOLDS:
+        scores = threshold_history[str(threshold)]
+        average_f1.append(np.mean(scores))
+        ci_f1.append(T_95 * np.std(scores) / np.sqrt(len(scores)))
+
+    plt.figure(figsize=(8, 3))
+    plt.errorbar(THRESHOLDS, average_f1, yerr=ci_f1,
+                 marker='o', capsize=4, capthick=1,
+                 linewidth=1, markersize=4, c='k')
+    plt.xlabel('importance threshold')
+    plt.ylabel('average F1-score')
+    plt.grid()
+    plt.xscale("log")
+    plt.xlim([5e-06, 1e-01])
+    plt.tight_layout()
+    plt.savefig(output_dir.joinpath('threshold_analysis.png'), dpi=DPI, bbox_inches="tight")
     plt.close()
 
 
