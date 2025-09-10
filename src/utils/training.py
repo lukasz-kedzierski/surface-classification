@@ -6,12 +6,26 @@ import sys
 import threading
 import time
 from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import torch
 import yaml
 from tqdm import tqdm
+
 from utils.visualization import T_95
+
+
+WINDOW_LENGTH = 200  # Number of samples in each window.
+# XGBoost hyperparameter space
+PARAM_GRID = {'n_estimators': [100, 200, 300],
+              'learning_rate': [0.01, 0.1, 0.3],
+              'max_depth': [3, 4, 5],
+              'subsample': [0.6, 0.8, 1.0],
+              'colsample_bytree': [0.6, 0.8, 1.0],
+              'min_child_weight': [1, 3, 5],
+              'reg_alpha': [0.1, 0.5],
+              'reg_lambda': [0.1, 0.5]}
 
 
 class EarlyStopper:
