@@ -65,7 +65,7 @@ pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu12
 
 ## Dataset
 
-The custom dataset used in this research is publicly available for download:
+The custom dataset used in this research is publicly available for download in raw form:
 
 **Download Link:** <https://tulodz-my.sharepoint.com/:f:/g/personal/202715_edu_p_lodz_pl/Em1T2WBmJT1NvsVm7FuZdJYB-d-HaB4iCnT79G592e8QtQ>  
 **Size:** 5.65 GB  
@@ -110,6 +110,21 @@ All experiments use fixed random seeds for reproducibility. Results should be id
 - `src/experiments/train_cnn.py` - CNN model training and evaluation
 - `src/experiments/evaluate_models.py` - Comprehensive model comparison and results generation
 - `scripts/` - Utility scripts for setup and batch processing
+
+### Expected Runtime
+
+Execution time was measured using the following hardware:
+- Intel(R) Core(TM) i7-10700F CPU @ 2.90GHz
+- 128 GB 2400 MT/s
+- 12 GB NVIDIA GeForce RTX 3060
+
+| Script | GPU Time | Notes |
+|--------|----------|-------|
+| Data preprocessing | ~65 min | ~45 min for extracting, ~20 min for processing |
+| XGB threshold analysis | ~10 min | 40 splits |
+| CNN CV experiments | ~3 h | 9 parallel processes (one per experiment), 10 splits |
+| CNN tuning experiments | ~4- h | 9 parallel processes (one per experiment), 40 splits |
+| XGB tuning experiments | ~75- min | 9 parallel processes (one per experiment), 40 splits |
 
 ## Project Structure
 
