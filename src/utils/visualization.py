@@ -97,7 +97,7 @@ def plot_signal(dataframe: pd.DataFrame, columns: list, output_dir: Path,
     ax.set_xlabel('time [s]')
     fig.legend(loc='outside upper right', ncol=len(columns))
     figure_name = y_label.lower().split('[')[0].strip().replace(' ', '_') if y_label else 'signal_plot'
-    plt.savefig(output_dir.joinpath(f'{figure_name}.png'), dpi=DPI, bbox_inches="tight")
+    plt.savefig(output_dir.joinpath(f'{figure_name}.png'), dpi=DPI, bbox_inches='tight')
     plt.close()
 
 
@@ -134,7 +134,7 @@ def plot_many(dataframe: pd.DataFrame, columns: list, output_dir: Path,
     fig.supxlabel('time [s]')
     plt.tight_layout()
     figure_name = y_label.lower().split('[')[0].strip().replace(' ', '_') if y_label else 'signal_plot'
-    plt.savefig(output_dir.joinpath(f'{figure_name}.png'), dpi=DPI, bbox_inches="tight")
+    plt.savefig(output_dir.joinpath(f'{figure_name}.png'), dpi=DPI, bbox_inches='tight')
     plt.close()
 
 
@@ -153,12 +153,12 @@ def plot_correlation(correlation_matrix: pd.DataFrame, output_dir: Path) -> None
     sns.heatmap(correlation_matrix,
                 vmin=-1,
                 vmax=1,
-                cmap="Blues",
+                cmap='Blues',
                 annot=True,
                 linewidths=0.5,
-                fmt=".2f")
+                fmt='.2f')
     plt.xticks(rotation=45, ha='right')
-    plt.savefig(output_dir.joinpath('corr_plot.png'), dpi=DPI, bbox_inches="tight")
+    plt.savefig(output_dir.joinpath('corr_plot.png'), dpi=DPI, bbox_inches='tight')
     plt.close()
 
 
@@ -201,7 +201,7 @@ def plot_odom_error(odometry_errors: pd.DataFrame, assigned_labels: list, image_
     plt.ylabel('scaled odometry error')
     plt.grid()
     plt.legend(loc='lower right')
-    plt.savefig(image_path, dpi=DPI, bbox_inches="tight")
+    plt.savefig(image_path, dpi=DPI, bbox_inches='tight')
     plt.close()
 
 
@@ -235,92 +235,152 @@ def plot_threshold_analysis(threshold_data_path: Path, output_dir: Path) -> None
     plt.xlabel('importance threshold')
     plt.ylabel('average F1-score')
     plt.grid()
-    plt.xscale("log")
+    plt.xscale('log')
     plt.xlim([5e-06, 1e-01])
     plt.tight_layout()
-    plt.savefig(output_dir.joinpath('threshold_analysis.png'), dpi=DPI, bbox_inches="tight")
+    plt.savefig(output_dir.joinpath('threshold_analysis.png'), dpi=DPI, bbox_inches='tight')
     plt.close()
 
 
-def load_cv_results(filenames, results_dir):
-    """Load CV results from JSON files.
+# ---------------- Main plotting functions ---------------- #
+def plot_cv_results(model: str, number_of_classes: str,
+                    experiment_configurations: dict, result_dir: Path) -> None:
+    """Plot cross-validation results with confidence intervals.
 
     Parameters
     ----------
-    filenames : list of str
-        List of filenames (with extension) to load.
-    results_dir : Path
-        Directory where results are stored.
-
-    Returns
-    -------
-    results : dict
-        Dictionary of loaded results.
+    model : str
+        Model type.
+    number_of_classes : str
+        Number of class labels in the experiment.
+    experiment_configurations : dict
+        Dictionary of experiment configuration parameters.
+    result_dir : pathlib.Path
+        Path to directory storing experiment results.
     """
-    results = {}
-    for filename in filenames:
-        filepath = results_dir / f'{filename}.json'
-        with open(filepath, encoding='utf-8') as fp:
-            results[filename] = json.load(fp)
-    return results
+
+    # Get figure directory path.
+    image_dir = result_dir.joinpath('figures', 'cv')
+    image_dir.mkdir(parents=True, exist_ok=True)
+
+    for kinematics, filenames in experiment_configurations.items():
+        # Load results.
+        results_dir = result_dir.joinpath('logs', 'cv', model, number_of_classes, kinematics)
+        results = load_cv_results(filenames, results_dir)
+
+        # Gather labels.
+        labels = experiments_to_labels(filenames)
+
+        # Plot results.
+        plt.figure()
+        figure_name = f'cv_{model}_{number_of_classes}_{kinematics}.png'.lower()
+        output_path = image_dir.joinpath(figure_name)
+
+        for result, label in zip(results.values(), labels):
+            df = pd.DataFrame(result)
+            res_array = np.array(df.loc['f1_score'].values.tolist()).T
+            x = np.arange(1, res_array.shape[0] + 1)
+
+            # Calculate statistics.
+            average_f1 = res_array.mean(axis=1)
+            std_dev_f1 = res_array.std(axis=1)
+            ci = T_95 * std_dev_f1 / np.sqrt(10)
+
+            # Plot with confidence interval.
+            plt.plot(x, average_f1, label=label)
+            plt.fill_between(x, (average_f1 - ci), (average_f1 + ci), alpha=.2)
+
+        # Configure plot.
+        plt.xlim(1, 100)
+        plt.ylim(0.4, 1)
+        plt.xlabel('epoch')
+        plt.ylabel('average F1-score')
+        plt.grid(which='major', axis='both', linewidth=1)
+        plt.grid(which='minor', axis='both', linewidth=0.4)
+        plt.minorticks_on()
+        plt.legend(loc='lower right')
+        plt.tight_layout()
+        plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
+        plt.close()
 
 
-def load_tuning_results(filename, results_dir):
-    """Load CV results from JSON files.
+def plot_tuning_results(model: str, number_of_classes: str,
+                        experiment_configurations: dict, result_dir: Path) -> None:
+    """Plot tuning results with confidence intervals.
 
     Parameters
     ----------
-    filename : str
-        Filenames (without extension) to load.
-    results_dir : Path
-        Directory where results are stored.
-
-    Returns
-    -------
-    results : dict of dicts
-        Dictionary of loaded results.
+    model : str
+        Model type.
+    number_of_classes : str
+        Number of class labels in the experiment.
+    experiment_configurations : dict
+        Dictionary of experiment configuration parameters.
+    result_dir : pathlib.Path
+        Path to directory storing experiment results.
     """
-    result = {}
-    filepath_mean = results_dir / f'{filename}_mean.json'
-    with open(filepath_mean, encoding='utf-8') as fp:
-        result['mean'] = json.load(fp)
-    filepath_ci = results_dir / f'{filename}_ci.json'
-    with open(filepath_ci, encoding='utf-8') as fp:
-        result['ci'] = json.load(fp)
-    return result
+
+    # Set up paths.
+    image_dir = result_dir.joinpath('figures', 'tuning')
+    image_dir.mkdir(parents=True, exist_ok=True)
+    figure_name = f'tuning_{model}_{number_of_classes}.png'.lower()
+    output_path = image_dir.joinpath(figure_name)
+
+    plt.figure()
+    width = 0.2
+    ind = np.arange(3)  # the x locations for the groups
+
+    sorted_by_channel = defaultdict(list)
+    for kinematics, filenames in experiment_configurations.items():
+        sorted_by_channel['imu'].append((kinematics, filenames[0]))
+        sorted_by_channel['est. power'].append((kinematics, filenames[1]))
+        sorted_by_channel['both'].append((kinematics, filenames[2]))
+
+    for i, (label, channel_data) in enumerate(sorted_by_channel.items()):
+        # Load results.
+        results = {}
+        for kinematics, filename in channel_data:
+            results_dir = result_dir.joinpath('logs',
+                                              'tuning',
+                                              model,
+                                              number_of_classes,
+                                              kinematics)
+            results[filename] = load_tuning_results(filename, results_dir)
+        average_f1 = [result['mean']['weighted avg']['f1-score'] for result in results.values()]
+        ci_f1 = [result['ci']['weighted avg']['f1-score'] for result in results.values()]
+
+        plt.bar(ind + i * width,
+                average_f1,
+                width=width,
+                yerr=ci_f1,
+                label=label,
+                capsize=4,
+                alpha=0.6)
+
+    # Configure plot.
+    plt.xticks(ticks=np.arange(len(experiment_configurations)) + width,
+               labels=['4W', '6W', '4W, 6W'])
+    plt.yticks(ticks=np.arange(5, 11) / 10)
+    plt.ylim(0.5, 1)
+    plt.xlabel('configuration')
+    plt.ylabel('average F1 score')
+    plt.grid(which='major', axis='y', linewidth=1)
+    plt.grid(which='minor', axis='y', linewidth=0.4)
+    plt.minorticks_on()
+    plt.tick_params(axis='x', which='minor', bottom=False)
+    plt.legend(bbox_to_anchor=(1, 0.5), loc='center left')
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
+    plt.close()
 
 
-def experiments_to_labels(files):
-    """Map experiment filenames to plot labels.
-
-    Parameters
-    ----------
-    files : list of str
-        List of filenames.
-
-    Returns
-    -------
-    labels : list of str
-        Corresponding plot labels.
-    """
-    labels = []
-    for filename in files:
-        if 'imu' in filename:
-            if 'servo' in filename:
-                labels.append('both')
-            else:
-                labels.append('imu')
-        else:
-            labels.append('est. power')
-    return labels
-
-
-def build_directory_dict(root):
+# ---------------- Helper functions ---------------- #
+def build_directory_dict(root: Path) -> dict:
     """Builds a nested dictionary of directories and files using pathlib.
 
     Parameters
     ----------
-    root : Path
+    root : pathlib.Path
         Root directory to start the search.
 
     Returns
@@ -328,6 +388,7 @@ def build_directory_dict(root):
     result : dict
         Nested dictionary with structure {model: {classes: {kinematics: [filenames]}}}.
     """
+
     result = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
 
     for json_file in root.rglob('*.json'):
@@ -364,112 +425,81 @@ def build_directory_dict(root):
     }
 
 
-def plot_cv_results(model, classes, experiment_configurations, result_dir):
-    """Plot cross-validation results with confidence intervals.
+def load_cv_results(filenames: list, results_dir: Path) -> dict:
+    """Load CV results from JSON files.
 
     Parameters
     ----------
+    filenames : list of str
+        List of filenames (with extension) to load.
+    results_dir : pathlib.Path
+        Directory where results are stored.
+
+    Returns
+    -------
     results : dict
-        Dictionary of loaded CV results.
-    labels : tuple of str
-        Plot labels for each result set.
-    output_path : Path
-        Figure file path.
+        Dictionary of loaded results.
     """
-    # Get figure directory path.
-    figures_dir = result_dir.joinpath('figures', 'cv')
-    figures_dir.mkdir(parents=True, exist_ok=True)
 
-    for kinematics, filenames in experiment_configurations.items():
-        # Load results.
-        results_dir = result_dir.joinpath('logs', 'cv', model, classes, kinematics)
-        results = load_cv_results(filenames, results_dir)
-
-        # Gather labels.
-        labels = experiments_to_labels(filenames)
-
-        # Plot results.
-        plt.figure()
-        output_path = figures_dir.joinpath(f'cv_{model}_{classes}_{kinematics}.png')
-
-        for result, label in zip(results.values(), labels):
-            df = pd.DataFrame(result)
-            res_array = np.array(df.loc['f1_score'].values.tolist()).T
-            x = np.arange(1, res_array.shape[0] + 1)
-
-            # Calculate statistics
-            average_f1 = res_array.mean(axis=1)
-            std_dev_f1 = res_array.std(axis=1)
-            ci = T_95 * std_dev_f1 / np.sqrt(10)
-
-            # Plot with confidence interval
-            plt.plot(x, average_f1, label=label)
-            plt.fill_between(x, (average_f1 - ci), (average_f1 + ci), alpha=.2)
-
-        # Configure plot
-        plt.xlim(1, 100)
-        plt.ylim(0.4, 1)
-        plt.xlabel('epoch')
-        plt.ylabel('average F1-score')
-        plt.grid(which='major', axis='both', linewidth=1)
-        plt.grid(which='minor', axis='both', linewidth=0.4)
-        plt.minorticks_on()
-        plt.legend(loc='lower right')
-        plt.tight_layout()
-        plt.savefig(output_path, dpi=DPI, bbox_inches="tight")
-        plt.close()
+    results = {}
+    for filename in filenames:
+        filepath = results_dir / f'{filename}.json'
+        with open(filepath, encoding='utf-8') as fp:
+            results[filename] = json.load(fp)
+    return results
 
 
-def plot_tuning_results(model, classes, experiment_configurations, result_dir):
-    """Plot tuning results with confidence intervals.
+def load_tuning_results(filename: str, results_dir: Path) -> dict:
+    """Load CV results from JSON files.
 
     Parameters
     ----------
-    results : dict
-        Dictionary of loaded tuning results.
-    labels : tuple of str
-        Plot labels for each result set.
-    output_path : Path
-        Figure file path.
+    filename : str
+        Filenames (without extension) to load.
+    results_dir : pathlib.Path
+        Directory where results are stored.
+
+    Returns
+    -------
+    results : dict of dicts
+        Dictionary of loaded results.
     """
-    # Get figure directory path.
-    figures_dir = result_dir.joinpath('figures', 'tuning')
-    figures_dir.mkdir(parents=True, exist_ok=True)
 
-    plt.figure()
-    output_path = figures_dir.joinpath(f'tuning_{model}_{classes}.png')
+    result = {}
+    filepath_mean = results_dir / f'{filename}_mean.json'
 
-    width = 0.2
-    ind = np.arange(3)  # the x locations for the groups
+    with open(filepath_mean, encoding='utf-8') as fp:
+        result['mean'] = json.load(fp)
 
-    sorted_by_channel = defaultdict(list)
-    for kinematics, filenames in experiment_configurations.items():
-        sorted_by_channel['imu'].append((kinematics, filenames[0]))
-        sorted_by_channel['est. power'].append((kinematics, filenames[1]))
-        sorted_by_channel['both'].append((kinematics, filenames[2]))
+    filepath_ci = results_dir / f'{filename}_ci.json'
 
-    for i, (label, channel_data) in enumerate(sorted_by_channel.items()):
-        # Load results.
-        results = {}
-        for kinematics, filename in channel_data:
-            results_dir = result_dir.joinpath('logs', 'tuning', model, classes, kinematics)
-            results[filename] = load_tuning_results(filename, results_dir)
-        average_f1 = [result['mean']['weighted avg']['f1-score'] for result in results.values()]
-        ci_f1 = [result['ci']['weighted avg']['f1-score'] for result in results.values()]
+    with open(filepath_ci, encoding='utf-8') as fp:
+        result['ci'] = json.load(fp)
 
-        plt.bar(ind + i * width, average_f1, width=width, yerr=ci_f1, label=label, capsize=4, alpha=0.6)
+    return result
 
-    # Configure plot
-    plt.xticks(ticks=np.arange(len(experiment_configurations)) + width, labels=['4W', '6W', '4W, 6W'])
-    plt.yticks(ticks=np.arange(5, 11) / 10)
-    plt.ylim(0.5, 1)
-    plt.xlabel('configuration')
-    plt.ylabel('average F1 score')
-    plt.grid(which='major', axis='y', linewidth=1)
-    plt.grid(which='minor', axis='y', linewidth=0.4)
-    plt.minorticks_on()
-    plt.tick_params(axis='x', which='minor', bottom=False)
-    plt.legend(bbox_to_anchor=(1, 0.5), loc='center left')
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=DPI, bbox_inches="tight")
-    plt.close()
+
+def experiments_to_labels(files: list) -> list:
+    """Map experiment filenames to plot labels.
+
+    Parameters
+    ----------
+    files : list of str
+        List of filenames.
+
+    Returns
+    -------
+    labels : list of str
+        Corresponding plot labels.
+    """
+
+    labels = []
+    for filename in files:
+        if 'imu' in filename:
+            if 'servo' in filename:
+                labels.append('both')
+            else:
+                labels.append('imu')
+        else:
+            labels.append('est. power')
+    return labels
