@@ -8,30 +8,52 @@ import yaml
 from scipy import stats
 
 
-def sample_sequence(dataframe, selected_columns, window_length):
+def sample_sequence(dataframe: pd.DataFrame,
+                    selected_columns: list,
+                    window_length: int) -> np.ndarray:
+    """Draw random windowed sample from run.
+
+    Parameters
+    ----------
+    dataframe : pd.DataFrame
+        Data from run.
+    selected_columns : list
+        Subset of columns representing chosen signal channels.
+    window_length : int
+        Number of time steps in window.
+
+    Returns
+    -------
+    np.ndarray
+        Array containing selected channels and time steps.
     """
-    Draw random sample from run.
-    Args:
-        dataframe: data from run
-        selected_columns: subset of columns representing chosen signal channels
-        window_length: number of time steps in window
-    return: sequence dataframe containing selected channels and time steps
-    """
+
     df = dataframe[selected_columns]
     init_timestep = random.randint(0, (len(dataframe) - 1) - window_length)
     return df.iloc[init_timestep:init_timestep + window_length].to_numpy()
 
 
-def sequence_run(dataframe, selected_columns, window_length, window_stride=1):
+def sequence_run(dataframe: pd.DataFrame, selected_columns: list,
+                 window_length: int, window_stride: int = 1) -> list:
+    """Convert dataframe to list of windows.
+
+    Parameters
+    ----------
+    dataframe : pd.DataFrame
+        Data from run.
+    selected_columns : list
+        Subset of columns representing chosen signal channels.
+    window_length : int
+        Number of time steps in window.
+    window_stride : int
+        How many time steps to omit from original data between windows.
+
+    Returns
+    -------
+    df_list : list of pd.DataFrame
+        List of dataframes containing selected channels and time steps.
     """
-    Convert dataframe to list of windows.
-    Args:
-        dataframe: data from run
-        selected_columns: subset of columns representing chosen signal channels
-        window_length: number of time steps in window
-        window_stride: how many time steps to omit from original data between windows
-    return: list of dataframes containing selected channels and time steps
-    """
+
     df = dataframe[selected_columns]
     num_of_windows = len(dataframe) - window_length + window_stride
     df_list = [df.iloc[init_timestep:init_timestep + window_length].to_numpy()
@@ -187,12 +209,14 @@ def calculate_mean_power(wheel_load: pd.DataFrame,
     return df
 
 
-def get_sample_features(sequence, time_features=None, freq_features=None):
+def get_sample_features(sequence: np.ndarray,
+                        time_features: list | None = None,
+                        freq_features: list | None = None) -> np.ndarray:
     """Get features for single sequence.
 
     Parameters
     ----------
-    sequence : ndarray
+    sequence : np.ndarray
         Time series data for which features are to be extracted.
     time_features : list of str, optional
         List of time domain features to extract. If None, no time features are extracted.
@@ -201,9 +225,10 @@ def get_sample_features(sequence, time_features=None, freq_features=None):
 
     Returns
     -------
-    ndarray
-        Extracted features as a flattened array.
+    np.ndarray
+        Extracted features as a flat array.
     """
+
     if time_features is None and freq_features is None:
         raise ValueError("At least one of time_features or freq_features must be provided.")
 
@@ -216,21 +241,22 @@ def get_sample_features(sequence, time_features=None, freq_features=None):
     return np.array(engineered_features)
 
 
-def get_time_domain(sequence, time_features):
+def get_time_domain(sequence: np.ndarray, time_features: list) -> np.ndarray:
     """Get time features.
 
     Parameters
     ----------
-    sequence : ndarray
+    sequence : np.ndarray
         Time series data for which time features are to be extracted.
     time_features : list of str
         List of time domain features to extract.
 
     Returns
     -------
-    ndarray
+    np.ndarray
         Extracted time features as a flattened array.
     """
+
     engineered_time_features = []
 
     if 'min' in time_features:
@@ -266,21 +292,22 @@ def get_time_domain(sequence, time_features):
     return np.array(engineered_time_features).flatten()
 
 
-def get_frequency_domain(sequence, freq_features):
+def get_frequency_domain(sequence: np.ndarray, freq_features: list) -> np.ndarray:
     """Get frequency features.
 
     Parameters
     ----------
-    sequence : ndarray
+    sequence : np.ndarray
         Time series data for which frequency features are to be extracted.
     freq_features : list of str
         List of frequency domain features to extract.
 
     Returns
     -------
-    ndarray
+    np.ndarray
         Extracted frequency features as a flattened array.
     """
+
     engineered_freq_features = []
 
     ft = np.fft.fft(sequence, axis=0)
