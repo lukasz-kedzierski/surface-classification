@@ -8,6 +8,7 @@ from utils.visualization import setup_matplotlib, build_directory_dict, plot_cv_
 
 def main():
     """Main CV results plotting function."""
+
     parser = argparse.ArgumentParser(description='Run multiple training instances.')
     parser.add_argument('--result-dir',
                         default='results',
@@ -26,5 +27,5 @@ def main():
             plot_cv_results(model, classes, experiment_configurations, args.result_dir)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

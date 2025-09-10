@@ -241,6 +241,7 @@ def cnn_tuning(experiment_name: str,
     base_filename = '_'.join(['cnn', str(num_classes)]
                              + experiment_params['kinematics']
                              + experiment_params['channels']).lower()
+
     with open(output_dir.joinpath(f'{base_filename}.json'), 'w', encoding='utf-8') as fp:
         json.dump(history, fp)
 
@@ -253,6 +254,7 @@ def cnn_tuning(experiment_name: str,
 
 def main():
     """Main script for loading configuration file and running the experiment."""
+
     parser = argparse.ArgumentParser(description='CNN Cross-Validation for Surface Classification')
     parser.add_argument('--config-file',
                         type=str,

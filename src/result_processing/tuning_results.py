@@ -1,18 +1,22 @@
 """Main script for plotting tuning results."""
+
 import argparse
 from pathlib import Path
+
 from utils.visualization import setup_matplotlib, build_directory_dict, plot_tuning_results
 
 
 def main():
     """Main tuning results plotting function."""
-    parser = argparse.ArgumentParser(description='Run multiple training instances')
-    parser.add_argument('--result-dir', type=Path, default='results',
-                        help='Base directory for experiment outputs')
 
+    parser = argparse.ArgumentParser(description='Run multiple training instances.')
+    parser.add_argument('--result-dir',
+                        default='results',
+                        type=Path,
+                        help='Base directory for experiment outputs.')
     args = parser.parse_args()
 
-    # Set up matplotlib
+    # Set up matplotlib.
     setup_matplotlib({'lines.linewidth': 0.5})
 
     # Collect all directories and file names.
@@ -23,5 +27,5 @@ def main():
             plot_tuning_results(model, classes, experiment_configurations, args.result_dir)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -97,7 +97,7 @@ def xgb_threshold_analysis(experiment_name: str,
                                  freq_features=dataset_params['freq_features'])
 
     threshold_history = defaultdict(list)
-    sss = StratifiedShuffleSplit(test_size=0.2)
+    sss = StratifiedShuffleSplit(n_splits=40, test_size=0.2)
 
     for (training_index, test_index) in sss.split(x, y):
         # Initialize the model in each split.
@@ -105,7 +105,6 @@ def xgb_threshold_analysis(experiment_name: str,
 
         train_subset = Subset(cv_data, training_index)
         test_subset = Subset(cv_data, test_index)
-
         train_dataloader = DataLoader(train_subset,
                                       batch_size=len(train_subset),
                                       worker_init_fn=seed_worker,
@@ -116,24 +115,24 @@ def xgb_threshold_analysis(experiment_name: str,
                                      worker_init_fn=seed_worker,
                                      generator=g)
 
-        # Extract the whole datasets to variables
+        # Extract the whole datasets to variables.
         x_train, y_train = next(iter(train_dataloader))
         x_test, y_true = next(iter(test_dataloader))
 
-        # Find the best hyperparameters
+        # Find the best hyperparameters.
         clf_search = RandomizedSearchCV(estimator=xgb_model, param_distributions=PARAM_GRID, cv=5,
-                                        scoring='f1_weighted', n_jobs=8, verbose=4)
+                                        scoring='f1_weighted', n_jobs=-1, verbose=4)
         clf_search.fit(x_train, y_train)
 
-        # Find the most important features from the best estimator
+        # Find the most important features from the best estimator.
         importances = clf_search.best_estimator_.feature_importances_
         idx = np.arange(len(importances))
 
-        # Test different thresholds
+        # Test different thresholds.
         for threshold in THRESHOLDS:
             best_features = idx[importances > threshold]
 
-            # Fit the estimator on the best sets of hyperparameters and features
+            # Fit the estimator on the best sets of hyperparameters and features.
             xgb_tuned = XGBClassifier(objective='multi:softprob',
                                       num_class=num_classes,
                                       **clf_search.best_params_)
