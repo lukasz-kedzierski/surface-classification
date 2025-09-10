@@ -193,18 +193,14 @@ def main():
     """Main script for extracting data from ROS bag files and applying preprocessing pipeline."""
 
     parser = argparse.ArgumentParser(description='Convert ROS bags to CSV and preprocess them.')
-    parser.add_argument(
-        '--bag-dir',
-        default='data/train_set/raw',
-        type=Path,
-        help='Path to dataset directory relative to root.'
-    )
-    parser.add_argument(
-        '--merge-files',
-        default=True,
-        type=bool,
-        help='Whether to merge extracted CSV files into single dataframes per bag.'
-    )
+    parser.add_argument('--bag-dir',
+                        default='data/train_set/raw',
+                        type=Path,
+                        help='Path to dataset directory relative to root.')
+    parser.add_argument('--merge-files',
+                        default=True,
+                        type=bool,
+                        help='Whether to merge extracted CSV files into single dataframes per bag.')
     args = parser.parse_args()
 
     if not args.bag_dir.exists():
