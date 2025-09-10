@@ -1,59 +1,79 @@
-"""Main launcher for XGB experiments."""
+"""Main launcher for XGB experiments.
+
+Examples
+--------
+Run from command line:
+    $ python launcher_xgb.py --config-file xgb_tuning.yaml --script-name xgb_tuning.py
+"""
+
 import argparse
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+
 from utils.training import load_config, extract_experiment_name, run_training_instance
 
 
 def main():
     """Main function to run multiple XGB training instances."""
-    parser = argparse.ArgumentParser(description='Run multiple training instances')
-    parser.add_argument('--config-file', type=str, required=True,
-                        help='YAML file containing all configurations')
-    parser.add_argument('--script-name', type=str, required=True,
-                        help='Training script name')
-    parser.add_argument('--output-dir', type=Path, default='results/logs',
-                        help='Base directory for experiment outputs')
-    parser.add_argument('--max-parallel', type=int, default=9,
-                        help='Maximum number of parallel processes')
 
+    parser = argparse.ArgumentParser(description='Run multiple training instances.')
+    parser.add_argument('--config-file',
+                        type=str,
+                        required=True,
+                        help='YAML file containing all configurations.')
+    parser.add_argument('--script-name',
+                        type=str,
+                        required=True,
+                        help='Training script name.')
+    parser.add_argument('--output-dir',
+                        default='results/logs',
+                        type=Path,
+                        help='Base directory for experiment outputs.')
+    parser.add_argument('--max-parallel',
+                        default=9,
+                        type=int,
+                        help='Maximum number of parallel processes.')
     args = parser.parse_args()
 
-    # Load configurations
+    # Load configurations.
     experiment_model, experiment_type = args.config_file.removesuffix('.yaml').split('_')
     config_path = Path('configs').joinpath(args.config_file)
     config_params = load_config(config_path)
     experiments = config_params['experiments']
-    print(f'Loaded {len(experiments)} configurations')
+    print(f"Loaded {len(experiments)} configurations.")
 
-    # Create output directory
+    # Set up paths.
     output_dir = args.output_dir.joinpath(experiment_type, experiment_model)
     output_dir.mkdir(parents=True, exist_ok=True)
-
-    # Get script path.
     script_path = Path('src/experiments').joinpath(experiment_type, args.script_name)
 
-    # Get experiment names
-    experiment_names = [extract_experiment_name(experiment['experiment_params']) for experiment in experiments]
+    # Get experiment names.
+    experiment_names = [
+        extract_experiment_name(experiment['experiment_params']) for experiment in experiments
+    ]
 
     # Parallel execution
-    print(f'Running {len(experiments)} experiments with max {args.max_parallel} parallel processes')
+    print(f"Running {len(experiments)} experiments"
+          f" with {args.max_parallel} parallel processes.")
 
     with ThreadPoolExecutor(max_workers=args.max_parallel) as executor:
-        # Submit all jobs
+        # Submit all jobs.
         experiments = config_params['experiments']
-        future_to_config = {
-            executor.submit(run_training_instance, script_path, args.config_file, experiment_name, output_dir): experiment_name
-            for experiment_name in experiment_names
-        }
+        future_to_config = {executor.submit(
+            run_training_instance,
+            script_path,
+            args.config_file,
+            experiment_name,
+            output_dir
+        ): experiment_name for experiment_name in experiment_names}
 
         results = []
         for future in as_completed(future_to_config):
             result = future.result()
             results.append(result)
 
-    # Summary
+    # Summary.
     successful = sum(1 for r in results if r['success'])
     failed = len(results) - successful
 

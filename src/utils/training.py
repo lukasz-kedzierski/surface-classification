@@ -27,7 +27,7 @@ PARAM_GRID = {'n_estimators': [100, 200, 300],
               'min_child_weight': [1, 3, 5],
               'reg_alpha': [0.1, 0.5],
               'reg_lambda': [0.1, 0.5]}
-THRESHOLD = 5e-3
+THRESHOLD = 1e-3
 
 
 class EarlyStopper:
