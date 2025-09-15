@@ -87,12 +87,12 @@ python src/data_processing/preprocessing.py
 
 3. **Run baseline experiments:**
 ```bash
-python src/experiments/launchers/launcher_xgb.py --config-file xgb_tuning.yaml --script-name surface_classification_xgb_tuning.py
+python src/experiments/launchers/launcher_xgb.py --config-file xgb_tuning_generalized.yaml --script-name surface_classification_xgb_tuning.py
 ```
 
 4. **Train CNN models:**
 ```bash
-python src/experiments/launchers/launcher_cnn.py --config-file cnn_tuning.yaml --script-name surface_classification_cnn_tuning.py
+python src/experiments/launchers/launcher_cnn.py --config-file cnn_tuning_generalized.yaml --script-name surface_classification_cnn_tuning.py
 ```
 
 5. **Generate results and comparisons:**
