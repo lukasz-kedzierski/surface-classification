@@ -23,12 +23,12 @@ Our work demonstrates that IMU data is sufficient for satisfactory terrain class
 ### Dependencies
 
 This project uses Python and requires the following core dependencies:
-- numpy
-- pandas
-- scikit-learn
-- scipy
-- xgboost
-- pytorch
+- [NumPy](https://numpy.org/)
+- [pandas](https://pandas.pydata.org/)
+- [scikit-learn](https://scikit-learn.org/stable/)
+- [SciPy](https://scipy.org/)
+- [XGBoost](https://xgboost.readthedocs.io/en/stable/)
+- [PyTorch](https://pytorch.org/)
 
 All dependencies are managed through `pyproject.toml`. 
 
