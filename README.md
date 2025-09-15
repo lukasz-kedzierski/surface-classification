@@ -12,7 +12,7 @@ Our work demonstrates that IMU data is sufficient for satisfactory terrain class
 
 ## Key Features
 
-- Implementation of CNN architecture for surface type classification
+- PyTorch implementation of CNN architecture for surface type classification
 - Comprehensive comparison with [XGBoost](https://xgboost.readthedocs.io/en/stable/)
 - Custom dataset with public availability
 - Reproducible experiments with fixed random seeds
@@ -23,10 +23,11 @@ Our work demonstrates that IMU data is sufficient for satisfactory terrain class
 ### Dependencies
 
 This project uses Python and requires the following core dependencies:
-- pandas
 - numpy
-- scipy
+- pandas
 - scikit-learn
+- scipy
+- xgboost
 - pytorch
 
 All dependencies are managed through `pyproject.toml`. 
@@ -86,17 +87,18 @@ python src/data_processing/preprocessing.py
 
 3. **Run baseline experiments:**
 ```bash
-python src/experiments/run_baselines.py
+python src/experiments/launchers/launcher_xgb.py --config-file xgb_tuning.yaml --script-name surface_classification_xgb_tuning.py
 ```
 
 4. **Train CNN models:**
 ```bash
-python src/experiments/train_cnn.py
+python src/experiments/launchers/launcher_cnn.py --config-file cnn_tuning.yaml --script-name surface_classification_cnn_tuning.py
 ```
 
 5. **Generate results and comparisons:**
 ```bash
-python src/experiments/evaluate_models.py
+python src/result_processing/tuning_results.py
+python src/result_processing/statistical_analysis.py
 ```
 
 ### Reproducibility
@@ -105,11 +107,12 @@ All experiments use fixed random seeds for reproducibility. Results should be id
 
 ### Key Scripts
 
-- `src/data/preprocessing.py` - Data preprocessing pipeline
-- `src/experiments/run_baselines.py` - Traditional ML baseline experiments
-- `src/experiments/train_cnn.py` - CNN model training and evaluation
-- `src/experiments/evaluate_models.py` - Comprehensive model comparison and results generation
-- `scripts/` - Utility scripts for setup and batch processing
+- `src/data_processing/preprocessing.py` - Data preprocessing pipeline
+- `src/experiments/cv/surface_classification_cnn_cv.py` - CNN model CV training
+- `src/experiments/tuning/` - CNN and XGB CV tuning scripts with best model save
+- `src/experiments/launchers/` - Launcher scripts for paper experiments
+- `src/experiments/training/surface_classification_cnn_training.py` - CNN model training script for deployment
+- `src/result_processing/` - Dataset analysis; Comprehensive model comparison and results generation
 
 ### Expected Runtime
 
@@ -122,28 +125,29 @@ Execution time was measured using the following hardware:
 |--------|----------|-------|
 | Data preprocessing | ~65 min | ~45 min for extracting, ~20 min for processing |
 | XGB threshold analysis | ~10 min | 40 splits |
-| CNN CV experiments | ~3 h | 9 parallel processes (one per experiment), 10 splits |
-| CNN tuning experiments | ~4- h | 9 parallel processes (one per experiment), 40 splits |
-| XGB tuning experiments | ~75- min | 9 parallel processes (one per experiment), 40 splits |
+| CNN CV experiments | ~3.0 h | 9 parallel processes (one per experiment), 10 splits |
+| CNN tuning experiments | ~4.0-4.5 h | 9 parallel processes (one per experiment), 40 splits |
+| XGB tuning experiments | ~1.0-3.0 h | 9 parallel processes (one per experiment), 40 splits |
 
 ## Project Structure
 
 ```
-├── src/                    # Main source code
-│   ├── data/              # Data processing modules
-│   ├── models/            # Model implementations
-│   ├── experiments/       # Training and evaluation scripts
-│   └── utils/             # Helper functions
-├── data/                  # Dataset storage
-│   ├── raw/              # Original dataset
-│   └── processed/        # Preprocessed data
-├── results/               # Experimental outputs
-│   ├── figures/          # Generated plots and figures
-│   ├── models/           # Saved model checkpoints
-│   └── logs/             # Training logs
-├── notebooks/             # Jupyter notebooks for analysis
-├── scripts/               # Utility scripts
-└── tests/                 # Unit tests
+├── src/                      # Main source code
+│   ├── data_processing/       # Data processing modules
+│   ├── models/                # Model implementations
+│   ├── experiments/           # Training and evaluation scripts
+│   ├── result_processing/     # Result processing modules
+│   └── utils/                 # Helper functions
+├── configs/                  # Experiment configuration files
+├── data/                     # Dataset storage
+│   ├── train_set/             # Training dataset
+│   │   ├── raw/                # Original dataset
+│   │   └── processed/          # Preprocessed data
+│   └── odom_erros.ods         # Odometry error values
+├── results/                  # Experimental outputs
+│   ├── figures/               # Generated plots and figures
+│   ├── models/                # Saved model checkpoints
+│   └── logs/                  # Training logs
 ```
 
 ## Citing
