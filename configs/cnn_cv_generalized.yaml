@@ -43,4 +43,4 @@ dataset_params:
   data_dir: "data/train_set/processed"
   labels_file: "data/train_set/labels.json"
   data_frequency: 100.0
-  generalized_classes: False
+  generalized_classes: True
