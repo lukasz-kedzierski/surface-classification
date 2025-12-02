@@ -179,7 +179,7 @@ def plot_odom_error(odometry_errors: pd.DataFrame, assigned_labels: list, image_
                        'short carpet',
                        'long carpet',
                        'artificial grass',
-                       'pcv foamboard',
+                       'pvc foamboard',
                        'linoleum',
                        'ceramic tiles',
                        'osb',

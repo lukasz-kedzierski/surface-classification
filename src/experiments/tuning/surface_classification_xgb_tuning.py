@@ -27,6 +27,7 @@ from utils.training import (
     extract_experiment_name,
     set_seed,
     seed_worker,
+    get_device,
     average_over_splits,
     WINDOW_LENGTH,
     PARAM_GRID,
@@ -71,6 +72,7 @@ def xgb_training(experiment_name: str,
           f"Configurations: {experiment_params['kinematics']}")
 
     g = set_seed(training_params['seed'])
+    device = get_device()
 
     # Set up paths.
     data_dir = Path(dataset_params['data_dir'])
@@ -114,7 +116,8 @@ def xgb_training(experiment_name: str,
 
     for i, (training_index, test_index) in enumerate(sss.split(x, y)):
         # Initialize the model in each split.
-        xgb_model = XGBClassifier(objective='multi:softprob', num_class=num_classes)
+        xgb_model = XGBClassifier(device=device, tree_method='hist',
+                                  objective='multi:softprob', num_class=num_classes)
 
         train_subset = Subset(cv_data, training_index)
         test_subset = Subset(cv_data, test_index)
@@ -145,7 +148,9 @@ def xgb_training(experiment_name: str,
         best_features = idx[importances > THRESHOLD]
 
         # Fit the estimator on the best sets of hyperparameters and features.
-        xgb_tuned = XGBClassifier(objective='multi:softprob',
+        xgb_tuned = XGBClassifier(device=device,
+                                  tree_method='hist',
+                                  objective='multi:softprob',
                                   num_class=num_classes,
                                   **clf_search.best_params_)
         xgb_tuned.fit(x_train[:, best_features], y_train)

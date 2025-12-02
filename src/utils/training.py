@@ -310,12 +310,12 @@ def seed_worker(worker_id) -> None:
     random.seed(worker_seed)
 
 
-def get_device() -> torch.device:
+def get_device() -> str:
     """Get the device to run the model on.
 
     Returns
     -------
-    torch.device
+    str
         The device to use for computations (CPU or GPU).
     """
     return 'cuda:0' if torch.cuda.is_available() else 'cpu'
