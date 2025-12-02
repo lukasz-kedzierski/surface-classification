@@ -1,7 +1,7 @@
 # Surface Classification Enhancement Using Estimated Power Consumption Data
 
-**Authors:** Łukasz Kędzierski, Nina Janus, Bartłomiej Cybulski, Paweł Smyczyński and Grzegorz Granosik
-**Status:** Published
+**Authors:** Łukasz Kędzierski, Nina Janus, Bartłomiej Cybulski, Paweł Smyczyński and Grzegorz Granosik  
+**Status:** Published  
 **Paper Link:** <https://www.sciencedirect.com/science/article/pii/S095219762503091X>
 
 ## Overview
