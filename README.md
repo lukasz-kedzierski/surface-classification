@@ -1,14 +1,14 @@
 # Surface Classification Enhancement Using Estimated Power Consumption Data
 
-**Authors:** Łukasz Kędzierski, Nina Janus, Bartłomiej Cybulski, Paweł Smyczyński and Grzegorz Granosik  
-**Status:** Under Review (Major Revision)  
-**Paper Link:** [Link when available]
+**Authors:** Łukasz Kędzierski, Nina Janus, Bartłomiej Cybulski, Paweł Smyczyński and Grzegorz Granosik
+**Status:** Published
+**Paper Link:** <https://www.sciencedirect.com/science/article/pii/S095219762503091X>
 
 ## Overview
 
 This repository contains the experimental code for research on improving autonomous mobile robot control with robust surface classification methods. We investigate the application of convolutional neural networks for recognition of terrain types using IMU and estimated power consumption data and provide comprehensive comparisons with XGBoost.
 
-Our work demonstrates that IMU data is sufficient for satisfactory terrain classification and information about power expenditure can further enhance it. All experiments were performed using [a custom dataset](https://tulodz-my.sharepoint.com/:f:/g/personal/202715_edu_p_lodz_pl/Em1T2WBmJT1NvsVm7FuZdJYB-d-HaB4iCnT79G592e8QtQ) available for reproducibility and future research.
+Our work demonstrates that IMU data is sufficient for satisfactory terrain classification and information about power expenditure can further enhance it. All experiments were performed using [a custom dataset](https://data.mendeley.com/datasets/j73s4z6mnv/1) available for reproducibility and future research.
 
 ## Key Features
 
@@ -61,14 +61,12 @@ pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu12
 ### Hardware Requirements
 
 - **Recommended:** NVIDIA GPU with CUDA support
-- **Minimum:** CPU (training will be significantly slower)
-- **Memory:** [To be determined based on experiments]
 
 ## Dataset
 
 The custom dataset used in this research is publicly available for download in raw form:
 
-**Download Link:** <https://tulodz-my.sharepoint.com/:f:/g/personal/202715_edu_p_lodz_pl/Em1T2WBmJT1NvsVm7FuZdJYB-d-HaB4iCnT79G592e8QtQ>  
+**Download Link:** <https://data.mendeley.com/datasets/j73s4z6mnv/1>  
 **Size:** 5.65 GB  
 **Format:** ROS bag files
 
@@ -155,18 +153,21 @@ Execution time was measured using the following hardware:
 If you use this code or dataset in your research, please cite our paper:
 
 ```bibtex
-@article{[citation-key],
-  title={[Paper Title]},
-  author={[Author Names]},
-  journal={[Journal/Conference]},
-  year={[Year]},
-  note={Under Review}
+@article{KEDZIERSKI2026113060,
+title = {Surface classification enhancement using estimated power consumption data},
+journal = {Engineering Applications of Artificial Intelligence},
+volume = {163},
+pages = {113060},
+year = {2026},
+issn = {0952-1976},
+doi = {https://doi.org/10.1016/j.engappai.2025.113060},
+author = {Łukasz Kędzierski and Nina Janus and Bartłomiej Cybulski and Paweł Smyczyński and Grzegorz Granosik},
 }
 ```
 
 ## License
 
-[License information]
+[CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/)
 
 ## Contact
 
@@ -176,4 +177,4 @@ For questions about the code or dataset, please contact:
 
 ---
 
-**Note:** This repository is actively maintained during the review process. Updates and improvements are ongoing.
+<!-- **Note:** This repository is actively maintained during the review process. Updates and improvements are ongoing. -->
