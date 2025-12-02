@@ -74,7 +74,8 @@ def process_bag(bag_path: Path,
 
     # Split path into chunks.
     subfolders = bag_path.parts
-    bag_name, kinematics, surface = subfolders[-1], subfolders[-2], subfolders[-3]
+    kinematics, surface = subfolders[-2], subfolders[-3]
+    bag_name = '_'.join(subfolders[-3:])
 
     # Set servo indexing flag.
     if kinematics == '4W':
